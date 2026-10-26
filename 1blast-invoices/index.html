@@ -252,11 +252,33 @@ details.card > div { display: flex; flex-direction: column; gap: 12px; }
 }
 .filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .s-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
-.s-status .chip { font: 600 12px/1 var(--f-body); padding: 5px 9px; border-radius: 999px; border: 1px solid; }
+.chip { font: 600 12px/1 var(--f-body); padding: 5px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
 .chip.paid { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
 .chip.unpaid { background: var(--accent-soft); color: var(--ink); border-color: var(--accent-text); }
 .chip.overdue { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
 .pay-part { display: flex; flex-direction: column; gap: 10px; }
+.chip.part { background: var(--accent-soft); color: var(--ink); border-color: var(--accent-text); }
+.chip.quote { background: transparent; color: var(--ink); border-color: var(--ink); }
+.chip.accepted { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+.chip.declined, .chip.expired { background: transparent; color: var(--muted); border-color: var(--line); }
+.pay-list { display: flex; flex-direction: column; gap: 6px; }
+.pay-row { display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 8px 10px; border-radius: 8px; background: var(--field); border: 1px solid var(--line); }
+.pay-row span:first-child { flex: 1; min-width: 0; }
+.pay-row .amt { font-family: var(--f-num); }
+.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.photo { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 8px; overflow: hidden; background: var(--field); border: 1px solid var(--line); }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo button {
+  position: absolute; top: 4px; right: 4px; font: 700 12px/1 var(--f-body); padding: 6px 9px;
+  border-radius: 999px; border: 0; background: rgba(0, 0, 0, .68); color: #fff; cursor: pointer;
+}
+.p-photos-wrap { display: flex; flex-direction: column; gap: 6px; }
+.p-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.p-photos img { width: 100%; border-radius: 3px; display: block; }
+.chk { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }
+.chk input { width: 22px; height: 22px; padding: 0; margin: 0; flex: none; accent-color: var(--accent-text); }
+.doc-seg { display: grid; grid-template-columns: 1fr 1fr; }
+.doc-seg button { padding: 11px 10px; font-size: 15px; }
 .paid-line { margin: 0; font-size: 15px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .stat .k { font-size: 13px; color: var(--muted); }
@@ -381,15 +403,32 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
     <div class="card">
       <div class="card-head"><p class="eyebrow">Job</p></div>
+      <div class="seg doc-seg" role="group" aria-label="Invoice or quote">
+        <button type="button" data-doc="invoice">Invoice</button><button type="button" data-doc="quote">Quote</button>
+      </div>
       <div class="row">
-        <label class="f"><span>Invoice no.</span><input id="inv-no" data-i="no" autocapitalize="characters"></label>
+        <label class="f"><span id="no-label">Invoice no.</span><input id="inv-no" data-i="no" autocapitalize="characters"></label>
         <label class="f"><span>Date</span><input id="inv-date" data-i="date" type="date"></label>
       </div>
       <p class="hint warn" id="no-warn" hidden></p>
       <label class="f"><span>Customer</span><input id="cust-name" data-i="custName" autocomplete="off" list="cust-list"></label>
       <datalist id="cust-list"></datalist>
       <label class="f"><span>Customer phone, email or address</span><textarea id="cust-contact" data-i="custContact" rows="2" autocomplete="off"></textarea></label>
-      <label class="f"><span>What was done (shown on invoice)</span><textarea id="job" data-i="job" rows="2"></textarea></label>
+      <label class="f"><span id="job-label">What was done (shown on invoice)</span><textarea id="job" data-i="job" rows="2"></textarea></label>
+      <div class="row" id="terms-row">
+        <label class="f"><span>Payment due</span>
+          <select id="inv-terms" data-i="terms">
+            <option value="" id="terms-usual">Usual</option>
+            <option value="receipt">On receipt</option>
+            <option value="collection">On collection</option>
+            <option value="7">Within 7 days</option>
+            <option value="14">Within 14 days</option>
+            <option value="30">Within 30 days</option>
+            <option value="date">Pick a date</option>
+          </select>
+        </label>
+        <label class="f" id="due-date-wrap"><span>Due date</span><input type="date" id="inv-due" data-i="dueDate"></label>
+      </div>
     </div>
 
     <h2 class="section-title">Charges</h2>
@@ -400,6 +439,15 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <div class="add-grid" id="add-grid"></div>
       <p class="hint">Each charge can be per hour, per item ("Each", for example 4 wheels at £60 each) or one fixed price. Hours can be decimals: 1.5 = 1 hr 30 min. For a discount, use Other charge with a minus price, like -20.</p>
       <button type="button" class="linkbtn" id="edit-services">Add, change or delete services</button>
+    </div>
+
+    <div class="card" id="photos-card">
+      <div class="card-head"><p class="eyebrow">Photos</p><span class="hint" id="photo-count"></span></div>
+      <div class="photo-grid" id="photo-grid"></div>
+      <button class="btn" id="photo-add" type="button">Add photos</button>
+      <input type="file" id="photo-file" accept="image/*" multiple hidden>
+      <label class="chk"><input type="checkbox" id="photo-show"><span>Show the photos on the invoice and PDF</span></label>
+      <p class="hint">Before and after shots of the job. Take them with the camera or pick them from your photos. They're kept on this phone with the invoice.</p>
     </div>
 
     <div class="card totals">
@@ -435,7 +483,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
           <div class="p-tag" id="p-tag"></div>
         </div>
         <div class="p-meta">
-          <div class="word">INVOICE</div>
+          <div class="word" id="p-word">INVOICE</div>
           <div class="p-small" id="p-no"></div>
           <div class="p-small" id="p-date"></div>
           <div class="p-small" id="p-due"></div>
@@ -445,15 +493,18 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       </div>
       <div class="p-body">
       <div class="p-two">
-        <div><p class="p-label">Bill to</p><div class="p-val" id="p-cust"></div></div>
+        <div><p class="p-label" id="p-billto-k">Bill to</p><div class="p-val" id="p-cust"></div></div>
         <div><p class="p-label">Job</p><div class="p-val" id="p-job"></div></div>
       </div>
       <div class="p-items" id="p-items"></div>
       <div class="p-totals">
         <div class="trow"><span>Subtotal</span><span id="p-sub"></span></div>
         <div class="trow" id="p-tax-row"><span id="p-tax-label"></span><span id="p-tax"></span></div>
-        <div class="trow grand"><span>Total due</span><span id="p-total"></span></div>
+        <div class="trow" id="p-tot-row" hidden><span>Total</span><span id="p-tot"></span></div>
+        <div class="trow" id="p-paid-row" hidden><span>Paid so far</span><span id="p-paidsofar"></span></div>
+        <div class="trow grand"><span id="p-grand-k">Total due</span><span id="p-total"></span></div>
       </div>
+      <div class="p-photos-wrap" id="p-photos-wrap" hidden><p class="p-label">Photos</p><div class="p-photos" id="p-photos"></div></div>
       <div class="p-foot" id="p-foot">
         <div id="p-pay-wrap"><p class="p-label">Payment details</p><div class="p-val" id="p-pay"></div><div class="p-terms" id="p-terms"></div></div>
         <div class="p-notes" id="p-notes"></div>
@@ -461,14 +512,27 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       </div>
       </div>
     </article>
+    <div class="card" id="quote-card" hidden>
+      <div class="card-head"><p class="eyebrow">Quote</p><span class="chip" id="quote-status"></span></div>
+      <p class="paid-line" id="quote-line"></p>
+      <button class="btn primary" id="quote-accept">Customer said yes: turn into invoice</button>
+      <button class="btn" id="quote-decline">Customer said no</button>
+      <button class="btn" id="quote-reopen" hidden>Mark as still open</button>
+    </div>
     <div class="card" id="pay-card">
       <div class="card-head"><p class="eyebrow">Payment</p><span class="chip" id="pay-status"></span></div>
+      <div class="trow"><span>Invoice total</span><span id="pay-total"></span></div>
+      <div class="pay-list" id="pay-list"></div>
+      <div class="trow" id="pay-bal-row"><span>Left to pay</span><span id="pay-bal"></span></div>
       <div class="pay-part" id="pay-unpaid">
         <div class="row">
+          <label class="f"><span>Amount</span><span class="money"><span class="cur" data-cur></span><input id="pay-amt" class="num" inputmode="decimal"></span></label>
           <label class="f"><span>Paid on</span><input type="date" id="paid-date"></label>
-          <label class="f"><span>How they paid</span><select id="paid-method"><option>Bank transfer</option><option>Cash</option><option>Card</option><option>Cheque</option><option>Other</option></select></label>
         </div>
-        <button class="btn primary" id="mark-paid">Mark as paid</button>
+        <label class="f"><span>How they paid</span><select id="paid-method"><option>Bank transfer</option><option>Cash</option><option>Card</option><option>Cheque</option><option>Other</option></select></label>
+        <button class="btn primary" id="mark-paid">Paid in full</button>
+        <button class="btn" id="pay-part">Record this amount (deposit or part payment)</button>
+        <p class="hint">Took a deposit? Put in the amount and tap Record this amount. The invoice then shows what's left to pay.</p>
       </div>
       <div class="pay-part" id="pay-paid">
         <p class="paid-line" id="paid-line"></p>
@@ -479,6 +543,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <p class="eyebrow">Send &amp; share</p>
       <button class="btn primary" id="save-pdf">Send PDF</button>
       <button class="btn" id="send-pic">Send as picture</button>
+      <button class="btn" id="send-photos" hidden>Send the job photos</button>
       <p class="hint">Both open your phone's share menu: WhatsApp, Messages, Mail, AirDrop, or Save to Files to keep a copy. A picture shows straight up in WhatsApp and texts without opening anything.</p>
       <div class="share-grid">
         <button class="btn" id="copy-msg">Copy message</button>
@@ -544,9 +609,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     <div class="card">
       <p class="eyebrow">Sending invoices</p>
       <label class="f"><span>Message sent with each invoice</span><textarea id="msg-template" data-s="msgTemplate" rows="3"></textarea></label>
+      <label class="f"><span>Message sent with a quote</span><textarea id="quote-template" data-s="quoteTemplate" rows="3"></textarea></label>
+      <label class="f"><span>Quotes are valid for (days)</span><input id="quote-days" data-s="quoteDays" class="num" inputmode="numeric" placeholder="30"></label>
       <label class="f"><span>Message with a receipt (once it's paid)</span><textarea id="rcpt-template" data-s="rcptTemplate" rows="3"></textarea></label>
       <label class="f"><span>Reminder for unpaid invoices</span><textarea id="rem-template" data-s="remTemplate" rows="3"></textarea></label>
-      <p class="hint">Words in curly brackets fill in by themselves: {customer}, {number}, {total}, {due} and {business}.</p>
+      <p class="hint">Words in curly brackets fill in by themselves: {customer}, {number}, {total}, {due}, {valid} and {business}.</p>
     </div>
 
     <div class="card">
@@ -595,8 +662,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <button type="button" data-filter="unpaid" aria-pressed="false">Unpaid</button>
       <button type="button" data-filter="overdue" aria-pressed="false">Overdue</button>
       <button type="button" data-filter="paid" aria-pressed="false">Paid</button>
+      <button type="button" data-filter="quotes" aria-pressed="false">Quotes</button>
     </div>
-    <input type="search" id="saved-search" placeholder="Search customer, job or invoice number" autocomplete="off">
+    <input type="search" id="saved-search" placeholder="Search customer, job or number" autocomplete="off">
     <p class="store-note" id="store-note">Loading saved invoices…</p>
     <div class="saved-list" id="saved-list"></div>
     <div class="actions">
@@ -623,7 +691,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   var LS_SETTINGS = "blast-invoice.v4.settings";
   var LS_DRAFT = "blast-invoice.v2.draft";
   var LS_SAVED = "blast-invoice.v2.saved";
-  var SNAP_KEYS = ["bizName", "bizTagline", "bizPhone", "bizEmail", "bizWebsite", "bizAddr", "bizRegNo", "bizVatNo", "bankName", "bankSort", "bankAcc", "payDays", "currency", "taxRate", "taxLabel", "notes"];
+  var SNAP_KEYS = ["bizName", "bizTagline", "bizPhone", "bizEmail", "bizWebsite", "bizAddr", "bizRegNo", "bizVatNo", "bankName", "bankSort", "bankAcc", "payDays", "quoteDays", "currency", "taxRate", "taxLabel", "notes"];
 
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -647,6 +715,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     currency: "GBP", taxRate: "0", taxLabel: "VAT",
     notes: "Thank you for your business.",
     msgTemplate: "Hi {customer}, here's invoice {number} from {business} for {total}. {due}Thanks!",
+    quoteDays: "30",
+    quoteTemplate: "Hi {customer}, here's your quote {number} from {business} for {total}. {valid}Let me know if you'd like to go ahead. Thanks!",
     rcptTemplate: "Hi {customer}, thanks for paying invoice {number} ({total}). Your receipt is attached. Thanks, {business}",
     remTemplate: "Hi {customer}, just a friendly reminder that invoice {number} for {total} from {business} hasn't been paid yet. {due}Thanks!",
     lastMethod: "Bank transfer",
@@ -748,16 +818,21 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     i = i || inv;
     var s = i.snap || settings;
     var sub = round2(i.items.reduce(function (t, it) { return t + itemAmount(it); }, 0));
+    var taxable = round2(i.items.reduce(function (t, it) { return t + (it.noTax ? 0 : itemAmount(it)); }, 0));
     var rate = num(s.taxRate);
-    var tax = round2(sub * rate / 100);
+    var tax = round2(taxable * rate / 100);
     return { sub: sub, rate: rate, tax: tax, total: round2(sub + tax) };
   }
   function billable() {
+    var taxOn = num(eff().taxRate) > 0, noTaxWords = "no " + (eff().taxLabel || "tax").trim();
     return inv.items.filter(function (it) { return itemAmount(it) !== 0; }).map(function (it) {
+      var q = it.type === "hourly" ? fmtHrs(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + "/hr"
+        : it.type === "each" ? fmtQty(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + " each" : "";
+      if (taxOn && it.noTax) q = q ? q + " · " + noTaxWords : noTaxWords;
       return {
         d: it.desc || (it.type === "hourly" ? "Labour" : "Charge"),
-        q: it.type === "hourly" ? fmtHrs(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + "/hr"
-          : it.type === "each" ? fmtQty(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + " each" : "",
+        noTax: taxOn && !!it.noTax, noTaxWords: noTaxWords,
+        q: q,
         hrs: it.type === "hourly" ? fmtHrs(num(it.hrs)) : it.type === "each" ? fmtQty(num(it.hrs)) : "",
         rate: it.type === "hourly" ? fmtMoney(num(it.rate)) + "/hr" : it.type === "each" ? fmtMoney(num(it.rate)) + " each" : "Fixed",
         a: itemAmount(it)
@@ -765,40 +840,69 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     });
   }
   function payDaysOf(s) { var n = parseInt(s.payDays, 10); return n > 0 ? n : 0; }
-  function dueText(s) {
-    var n = payDaysOf(s);
-    if (!n || !inv.date) return "";
-    var d = new Date(inv.date + "T12:00:00");
-    if (isNaN(d)) return "";
-    d.setDate(d.getDate() + n);
-    return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  function isQuote(doc) { return (doc || inv).docType === "quote"; }
+  // When payment is due: the invoice's own choice, or the usual number of days from the Company tab
+  function dueInfo(doc) {
+    doc = doc || inv;
+    var t = String(doc.terms || ""), s = doc.snap || settings;
+    if (t === "receipt") return { iso: doc.date || "", words: "on receipt" };
+    if (t === "collection") return { iso: "", words: "on collection" };
+    if (t === "date") return { iso: doc.dueDate || "", words: "" };
+    var n = /^\d+$/.test(t) ? parseInt(t, 10) : payDaysOf(s);
+    return { iso: n && doc.date ? isoAddDays(doc.date, n) : "", words: "", days: n };
   }
+  function dueText() { var d = dueInfo(inv); return d.iso ? fmtDate(d.iso) : ""; }
+  function dueLabel() { var d = dueInfo(inv); return d.words ? "Due " + d.words : d.iso ? "Due " + fmtDate(d.iso) : ""; }
+  function quoteDaysOf(doc) { var n = parseInt((doc.snap || settings).quoteDays, 10); return n > 0 ? n : 30; }
+  function validIso(doc) { return doc.date ? isoAddDays(doc.date, quoteDaysOf(doc)) : ""; }
+  function quoteStatusOf(doc) {
+    if (doc.quoteStatus === "accepted") return "accepted";
+    if (doc.quoteStatus === "declined") return "declined";
+    var v = validIso(doc);
+    return v && v < todayIso() ? "expired" : "quote";
+  }
+  // Payments: deposits and part payments, plus older invoices simply marked paid
+  function paymentsOf(doc) { return Array.isArray(doc.payments) ? doc.payments : []; }
+  function paidSoFar(doc) {
+    if (doc.paid && !paymentsOf(doc).length) return compute(doc).total;
+    return round2(paymentsOf(doc).reduce(function (t, x) { return t + num(x.amount); }, 0));
+  }
+  function balanceOf(doc) { return doc.paid ? 0 : round2(compute(doc).total - paidSoFar(doc)); }
+  function receivedIn(doc, from, to) {
+    if (isQuote(doc)) return 0;
+    var ps = paymentsOf(doc);
+    if (!ps.length) return doc.paid && doc.paidDate >= from && doc.paidDate < to ? compute(doc).total : 0;
+    return round2(ps.reduce(function (t, x) { return t + (x.date >= from && x.date < to ? num(x.amount) : 0); }, 0));
+  }
+  var STATUS_WORDS = { paid: "Paid", overdue: "Overdue", part: "Part paid", unpaid: "Unpaid", quote: "Quote", accepted: "Accepted", declined: "Declined", expired: "Expired" };
   function isoAddDays(iso, n) {
     var d = new Date(iso + "T12:00:00");
     if (isNaN(d)) return "";
     d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
-  function dueIsoOf(doc) {
-    var n = payDaysOf(doc.snap || settings);
-    return n && doc.date ? isoAddDays(doc.date, n) : "";
-  }
-  // paid | overdue | unpaid
+  function dueIsoOf(doc) { return dueInfo(doc).iso; }
+  // invoices: paid | overdue | part | unpaid; quotes: quote | accepted | declined | expired
   function statusOf(doc) {
+    if (isQuote(doc)) return quoteStatusOf(doc);
     if (doc.paid) return "paid";
     var due = dueIsoOf(doc);
-    return due && due < todayIso() ? "overdue" : "unpaid";
+    if (due && due < todayIso()) return "overdue";
+    return paidSoFar(doc) > 0 ? "part" : "unpaid";
   }
   function fmtShort(iso) {
     var d = new Date(iso + "T12:00:00");
     return isNaN(d) ? iso : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
   }
-  function termsText(s) {
-    var n = payDaysOf(s), due = dueText(s);
-    if (!n || inv.paid) return "";
-    return "Please pay within " + n + (n === 1 ? " day" : " days") + (due ? ", by " + due : "") + ".";
+  function termsText() {
+    if (inv.paid || isQuote(inv)) return "";
+    var d = dueInfo(inv);
+    if (d.words) return "Please pay " + d.words + ".";
+    if (d.days) return "Please pay within " + d.days + (d.days === 1 ? " day" : " days") + (d.iso ? ", by " + fmtDate(d.iso) : "") + ".";
+    return d.iso ? "Please pay by " + fmtDate(d.iso) + "." : "";
   }
   function payLines(s) {
+    if (isQuote(inv)) return [];
     var l = [s.bankName && "Account name: " + s.bankName, s.bankSort && "Sort code: " + s.bankSort, s.bankAcc && "Account number: " + s.bankAcc].filter(Boolean);
     if (l.length && inv.no) l.push("Reference: Invoice " + inv.no);
     return l;
@@ -830,6 +934,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       if (inv.snap && SNAP_KEYS.indexOf(k) >= 0) inv.snap[k] = el.value;
       settingsChanged();
       if (k === "currency") { renderServices(); renderAddButtons(); }
+      if (k === "taxRate" || k === "taxLabel") renderLines();
       if (inv.isExample) { renderTotals(); renderPaper(); } else changed();
     });
   });
@@ -852,7 +957,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       card.innerHTML =
         '<div class="card-head"><p class="eyebrow"></p><div class="line-tools">' +
         '<div class="seg" role="group" aria-label="How this is charged"><button type="button" data-t="hourly">Per hour</button><button type="button" data-t="each">Each</button><button type="button" data-t="fixed">Fixed</button></div>' +
-        '<button type="button" class="x">Remove</button></div></div>' +
+        '<button type="button" class="mini" data-up>Move up</button><button type="button" class="x">Remove</button></div></div>' +
         '<label class="f"><span>Wording</span><textarea rows="2" data-f="desc"></textarea></label>' +
         (it.type === "hourly"
           ? '<div class="row"><label class="f"><span>Hours</span><input class="num" inputmode="decimal" placeholder="0" data-f="hrs"></label>' +
@@ -861,9 +966,21 @@ a.btn { display: block; text-align: center; text-decoration: none; }
           ? '<div class="row"><label class="f"><span>How many</span><input class="num" inputmode="decimal" placeholder="0" data-f="hrs"></label>' +
             '<label class="f"><span>Price each</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-f="rate"></span></label></div>'
           : '<label class="f"><span>Price</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-f="amt"></span></label>') +
+        '<label class="chk" data-vat><input type="checkbox"><span></span></label>' +
         '<div class="line-total"></div>' +
         '<button type="button" class="linkbtn" data-save-svc>Save as a service for next time</button>';
       card.querySelector(".eyebrow").textContent = "Charge " + (idx + 1);
+      var vat = card.querySelector("[data-vat]"), taxRate = num(eff().taxRate);
+      vat.hidden = !(taxRate > 0);
+      vat.querySelector("span").textContent = "Add " + (eff().taxLabel || "tax").trim() + " (" + round2(taxRate) + "%) to this charge";
+      vat.querySelector("input").checked = !it.noTax;
+      vat.querySelector("input").addEventListener("change", function () { it.noTax = !this.checked; changed(); });
+      var up = card.querySelector("[data-up]");
+      up.hidden = idx === 0;
+      up.addEventListener("click", function () {
+        var at = inv.items.indexOf(it);
+        if (at > 0) { inv.items.splice(at, 1); inv.items.splice(at - 1, 0, it); renderLines(); changed(); }
+      });
       card.querySelector("[data-save-svc]").addEventListener("click", function () {
         var name = String(it.desc || "").split("\n")[0].trim();
         if (name.length > 32) name = name.slice(0, 30).trim() + "…";
@@ -1041,12 +1158,23 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     $("t-tax-row").hidden = !(c.rate > 0);
     setText("t-total", fmtMoney(c.total));
     setText("hdr-total", fmtMoney(c.total));
-    setText("hdr-name", inv.no ? "Invoice #" + inv.no : "Invoice");
+    var word = isQuote(inv) ? "Quote" : "Invoice";
+    setText("hdr-name", inv.no ? word + " #" + inv.no : word);
     $("example-note").hidden = !inv.isExample;
-    $("paid-note").hidden = !inv.paid;
+    $("paid-note").hidden = !inv.paid || isQuote(inv);
     var taken = noTaken(inv.no);
     $("no-warn").hidden = !taken;
-    if (taken) setText("no-warn", "Invoice number " + inv.no + " is already used by another invoice. The next free one is " + nextNo() + ".");
+    if (taken) setText("no-warn", word + " number " + inv.no + " is already used. The next free one is " + nextNo(inv.docType) + ".");
+    document.querySelectorAll("[data-doc]").forEach(function (b) { b.setAttribute("aria-pressed", String((b.getAttribute("data-doc") === "quote") === isQuote(inv))); });
+    setText("no-label", word + " no.");
+    setText("job-label", isQuote(inv) ? "What the job is (shown on the quote)" : "What was done (shown on invoice)");
+    setText("go-invoice", isQuote(inv) ? "View quote" : "View invoice");
+    setText("dup-inv", "Copy to a new " + word.toLowerCase());
+    setText("tab-inv", word);
+    $("terms-row").hidden = isQuote(inv);
+    $("due-date-wrap").hidden = inv.terms !== "date";
+    var n = payDaysOf(eff());
+    $("terms-usual").textContent = "Usual (" + (n ? "within " + n + (n === 1 ? " day" : " days") : "no due date") + ")";
   }
   function renderPaper() {
     var s = eff(), c = compute();
@@ -1054,12 +1182,15 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     setText("p-tag", s.bizTagline || "");
     $("p-tag").hidden = !s.bizTagline;
     setText("p-biz-info", [s.bizPhone, s.bizEmail, s.bizWebsite, s.bizAddr].filter(Boolean).join("\n"));
-    var due = dueText(s);
-    setText("p-due", inv.paid ? (inv.paidDate ? "Paid " + fmtDate(inv.paidDate) : "") : (due ? "Due " + due : ""));
+    var q = isQuote(inv);
+    setText("p-word", q ? "QUOTE" : "INVOICE");
+    setText("p-billto-k", q ? "Quote for" : "Bill to");
+    setText("p-due", q ? (validIso(inv) ? "Valid until " + fmtDate(validIso(inv)) : "")
+      : inv.paid ? (inv.paidDate ? "Paid " + fmtDate(inv.paidDate) : "") : dueLabel());
     $("p-due").hidden = !$("p-due").textContent;
     setText("p-no", inv.no ? "No. " + inv.no : "");
     setText("p-date", fmtDate(inv.date));
-    $("p-paid").hidden = !inv.paid;
+    $("p-paid").hidden = !inv.paid || q;
     setText("p-cust", [inv.custName, inv.custContact].filter(Boolean).join("\n") || "—");
     setText("p-job", inv.job || "—");
     var box = $("p-items");
@@ -1083,18 +1214,25 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     setText("p-tax-label", taxLabelText());
     setText("p-tax", fmtMoney(c.tax));
     $("p-tax-row").hidden = !(c.rate > 0);
-    setText("p-total", fmtMoney(c.total));
+    var part = !q && !inv.paid && paidSoFar(inv) > 0;
+    $("p-tot-row").hidden = !part; $("p-paid-row").hidden = !part;
+    setText("p-tot", fmtMoney(c.total));
+    setText("p-paidsofar", "−" + fmtMoney(paidSoFar(inv)));
+    setText("p-grand-k", part ? "Balance due" : q || inv.paid ? "Total" : "Total due");
+    setText("p-total", fmtMoney(part ? balanceOf(inv) : c.total));
     setText("p-notes", s.notes || "");
     $("p-notes").hidden = !s.notes;
-    var pay = payLines(s), terms = termsText(s), legal = legalText(s);
+    var pay = payLines(s), terms = termsText(), legal = legalText(s);
     setText("p-pay", pay.join("\n")); $("p-pay").hidden = !pay.length;
     setText("p-terms", terms); $("p-terms").hidden = !terms;
     $("p-pay-wrap").hidden = !(pay.length || terms);
     setText("p-legal", legal); $("p-legal").hidden = !legal;
     $("p-foot").hidden = !(pay.length || terms || s.notes || legal);
+    renderPaperPhotos();
     renderShare();
     renderPayCard();
-    $("save-pdf").textContent = inv.paid ? "Send receipt (PDF)" : "Send PDF";
+    $("save-pdf").textContent = q ? "Send quote (PDF)" : inv.paid ? "Send receipt (PDF)" : "Send PDF";
+    renderQuoteCard();
   }
   function renderStatus() {
     var el = $("hdr-status");
@@ -1104,16 +1242,18 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     if (saveState === "saving" || isDirty()) { el.textContent = "Saving…"; return; }
     if (saveState === "error") { el.textContent = "Not saved, phone storage is full or blocked"; return; }
     el.className = "status ok";
-    el.textContent = inv.paid ? "Saved · Paid" : statusOf(inv) === "overdue" ? "Saved · Overdue" : "Saved";
+    var st = statusOf(inv);
+    el.textContent = st === "unpaid" || st === "quote" ? "Saved" : "Saved · " + STATUS_WORDS[st];
   }
   function renderAll() {
-    fillForms(); renderLogo(); renderLines(); renderAddButtons(); renderServices(); renderTotals(); renderPaper(); renderStatus(); renderSaved();
+    fillForms(); renderLogo(); renderLines(); renderAddButtons(); renderServices(); renderPhotos(); renderTotals(); renderPaper(); renderStatus(); renderSaved();
   }
 
   // ---------- Saving ----------
   function stripForCompare(o) {
     var c = clone(o);
     delete c.kind; delete c.updatedAt; delete c.total; delete c.subtotal;
+    if (!c.docType) c.docType = "invoice";
     (c.items || []).forEach(function (it) { delete it._total; });
     return c;
   }
@@ -1122,7 +1262,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     delete body.isExample;
     if (!body.snap) body.snap = pick(settings);
     var c = compute();
-    body.kind = "invoice"; body.subtotal = c.sub; body.total = c.total; body.updatedAt = Date.now();
+    body.kind = "invoice"; body.docType = isQuote(inv) ? "quote" : "invoice";
+    body.subtotal = c.sub; body.total = c.total; body.updatedAt = Date.now();
     return body;
   }
   function pick(s) { var o = {}; SNAP_KEYS.forEach(function (k) { o[k] = s[k]; }); return o; }
@@ -1205,8 +1346,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       return (parseInt(b.no, 10) || 0) - (parseInt(a.no, 10) || 0);
     });
   }
-  function nextNo() {
-    var nums = sortedSaved().map(function (s) { return s.no; }).concat(inv.isExample ? [] : [inv.no]);
+  function nextNo(type) {
+    var wantQuote = type === "quote";
+    var nums = sortedSaved().filter(function (x) { return isQuote(x) === wantQuote; }).map(function (x) { return x.no; })
+      .concat(!inv.isExample && isQuote(inv) === wantQuote ? [inv.no] : []);
     var best = null;
     nums.forEach(function (n) {
       var m = String(n || "").trim().match(/^(.*?)(\d+)$/);
@@ -1214,29 +1357,36 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       var v = parseInt(m[2], 10);
       if (!best || v > best.v) best = { v: v, pre: m[1], w: m[2].length };
     });
-    return best ? best.pre + String(best.v + 1).padStart(best.w, "0") : "0001";
+    return best ? best.pre + String(best.v + 1).padStart(best.w, "0") : wantQuote ? "Q0001" : "0001";
   }
   function noTaken(no) {
     no = String(no || "").trim();
-    return !!no && sortedSaved().some(function (x) { return x.id !== inv.id && String(x.no || "").trim() === no; });
+    return !!no && sortedSaved().some(function (x) { return x.id !== inv.id && isQuote(x) === isQuote(inv) && String(x.no || "").trim() === no; });
   }
   function renderSaved() {
     $("store-note").textContent = "Saved on this phone. Keep the app on your home screen and make a backup now and then (bottom of this page).";
 
-    var all = sortedSaved(), month = todayIso().slice(0, 7);
-    function sum(arr) { return round2(arr.reduce(function (t, x) { return t + (x.total || 0); }, 0)); }
+    var all = sortedSaved(), invs = all.filter(function (x) { return !isQuote(x); });
+    function owedSum(arr) { return round2(arr.reduce(function (t, x) { return t + balanceOf(x); }, 0)); }
     function count(n) { return n + (n === 1 ? " invoice" : " invoices"); }
-    var unpaid = all.filter(function (x) { return !x.paid; });
-    var overdue = all.filter(function (x) { return statusOf(x) === "overdue"; });
-    var paidMonth = all.filter(function (x) { return x.paid && String(x.paidDate || "").slice(0, 7) === month; });
-    setText("s-owed", fmtMoney(sum(unpaid), settings.currency)); setText("s-owed-n", count(unpaid.length));
-    setText("s-overdue", fmtMoney(sum(overdue), settings.currency)); setText("s-overdue-n", count(overdue.length));
+    function received(from, to) {
+      var amt = 0, n = 0;
+      invs.forEach(function (x) { var r = receivedIn(x, from, to); if (r) { amt += r; n++; } });
+      return { amt: round2(amt), n: n };
+    }
+    var unpaid = invs.filter(function (x) { return !x.paid; });
+    var overdue = invs.filter(function (x) { return statusOf(x) === "overdue"; });
+    setText("s-owed", fmtMoney(owedSum(unpaid), settings.currency)); setText("s-owed-n", count(unpaid.length));
+    setText("s-overdue", fmtMoney(owedSum(overdue), settings.currency)); setText("s-overdue-n", count(overdue.length));
     $("s-overdue").classList.toggle("warn", overdue.length > 0);
-    setText("s-month", fmtMoney(sum(paidMonth), settings.currency)); setText("s-month-n", count(paidMonth.length));
-    var t = todayIso(), y = parseInt(t.slice(0, 4), 10), ty = t >= y + "-04-06" ? y : y - 1, tyStart = ty + "-04-06";
-    var paidYear = all.filter(function (x) { return x.paid && String(x.paidDate || "") >= tyStart; });
-    setText("s-year", fmtMoney(sum(paidYear), settings.currency));
-    setText("s-year-n", ty + "/" + String(ty + 1).slice(2) + " (from 6 April) · " + all.length + " invoices in all");
+    var t = todayIso(), month = t.slice(0, 7) + "-01", nextMonth = isoAddDays(t.slice(0, 7) + "-28", 7).slice(0, 7) + "-01";
+    var rm = received(month, nextMonth);
+    setText("s-month", fmtMoney(rm.amt, settings.currency)); setText("s-month-n", count(rm.n));
+    var y = parseInt(t.slice(0, 4), 10), ty = t >= y + "-04-06" ? y : y - 1;
+    var ry = received(ty + "-04-06", (ty + 1) + "-04-06");
+    var quotes = all.length - invs.length;
+    setText("s-year", fmtMoney(ry.amt, settings.currency));
+    setText("s-year-n", ty + "/" + String(ty + 1).slice(2) + " (from 6 April) · " + invs.length + " invoices" + (quotes ? ", " + quotes + " quotes" : ""));
     renderBackupNag(all.length);
     renderCustomers(all);
 
@@ -1244,7 +1394,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     var list = all.filter(function (x) {
       if (savedFilter !== "all") {
         var st = statusOf(x);
-        if (savedFilter === "unpaid" ? st === "paid" : st !== savedFilter) return false;
+        if (savedFilter === "quotes") { if (!isQuote(x)) return false; }
+        else if (isQuote(x)) return false;
+        else if (savedFilter === "unpaid" ? st === "paid" : st !== savedFilter) return false;
       }
       if (!q) return true;
       return [x.no, x.custName, x.custContact, x.job].join(" ").toLowerCase().indexOf(q) >= 0;
@@ -1267,24 +1419,34 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         '<div class="s-top"><div><div class="s-title"></div><div class="s-sub"></div></div><div class="s-amt"></div></div>' +
         '<div class="s-status"><span class="chip"></span><span class="s-when"></span></div>' +
         '<div class="s-actions"><button type="button" class="pill"></button><button type="button" data-a="open">Open</button>' +
-        '<button type="button" data-a="pdf">Send PDF</button><button type="button" data-a="remind">Send reminder</button><button type="button" data-a="text">Copy text</button>' +
+        '<button type="button" data-a="pdf">Send PDF</button><button type="button" data-a="remind">Send reminder</button><button type="button" data-a="convert">Turn into invoice</button><button type="button" data-a="text">Copy text</button>' +
         '<button type="button" data-a="copy">Copy to new</button><button type="button" class="del" data-a="del">Delete</button></div>' +
         '<div class="confirm" hidden><p></p><div class="row"><button type="button" class="btn" data-a="cancel">Cancel</button><button type="button" class="btn primary" data-a="yes">Delete</button></div></div>';
       var title = card.querySelector(".s-title");
-      title.textContent = "#" + (s.no || "—") + " · " + (s.custName || "No customer");
+      title.textContent = (isQuote(s) ? "Quote " : "") + "#" + (s.no || "—") + " · " + (s.custName || "No customer");
       if (s.id === inv.id) { var t = document.createElement("span"); t.className = "tag-now"; t.textContent = "OPEN"; title.append(t); }
       card.querySelector(".s-sub").textContent = [fmtDate(s.date), (s.job || "").replace(/\n+/g, " ")].filter(Boolean).join(" · ");
       card.querySelector(".s-amt").textContent = fmtMoney(s.total || 0, s.snap && s.snap.currency);
-      var st = statusOf(s), due = dueIsoOf(s), chip = card.querySelector(".chip");
+      var st = statusOf(s), due = dueIsoOf(s), chip = card.querySelector(".chip"), qt = isQuote(s);
       chip.className = "chip " + st;
-      chip.textContent = st === "paid" ? "Paid" : st === "overdue" ? "Overdue" : "Unpaid";
-      card.querySelector(".s-when").textContent = st === "paid"
-        ? (s.paidDate ? "Paid " + fmtShort(s.paidDate) : "") + (s.paidMethod ? " by " + s.paidMethod.toLowerCase() : "")
-        : due ? (st === "overdue" ? "Was due " : "Due ") + fmtShort(due) : "";
+      chip.textContent = STATUS_WORDS[st];
+      var when = "";
+      if (qt) when = st === "accepted" ? (s.convertedTo ? "Became invoice #" + s.convertedTo : "Accepted")
+        : st === "declined" ? "Customer said no" : validIso(s) ? (st === "expired" ? "Ran out " : "Valid until ") + fmtShort(validIso(s)) : "";
+      else if (st === "paid") when = (s.paidDate ? "Paid " + fmtShort(s.paidDate) : "") + (s.paidMethod ? " by " + s.paidMethod.toLowerCase() : "");
+      else {
+        var dw = dueInfo(s).words;
+        when = [paidSoFar(s) > 0 ? fmtMoney(balanceOf(s), s.snap && s.snap.currency) + " left to pay" : "",
+          dw ? "Due " + dw : due ? (st === "overdue" ? "Was due " : "Due ") + fmtShort(due) : ""].filter(Boolean).join(" · ");
+      }
+      card.querySelector(".s-when").textContent = when;
       var pill = card.querySelector(".pill");
       pill.textContent = s.paid ? "Mark unpaid" : "Mark paid";
       if (!s.paid) pill.classList.add("unpaid");
-      card.querySelector('[data-a="remind"]').hidden = !!s.paid;
+      pill.hidden = qt;
+      card.querySelector('[data-a="remind"]').hidden = !!s.paid || qt;
+      card.querySelector('[data-a="convert"]').hidden = !qt || st === "accepted";
+      card.querySelector('[data-a="convert"]').addEventListener("click", function () { convertQuote(s); });
       card.querySelector('[data-a="remind"]').addEventListener("click", function () { sendPdfFor(s, "reminder"); });
       pill.addEventListener("click", function () { togglePaid(s); });
       var acts = card.querySelector(".s-actions"), conf = card.querySelector(".confirm");
@@ -1295,7 +1457,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         copyToClipboard(withInvoice(s, asText), "Invoice #" + (s.no || "") + " copied");
       });
       card.querySelector('[data-a="del"]').addEventListener("click", function () {
-        conf.querySelector("p").textContent = "Delete invoice #" + (s.no || "") + " for good?";
+        conf.querySelector("p").textContent = "Delete " + (isQuote(s) ? "quote" : "invoice") + " #" + (s.no || "") + " for good?";
         conf.hidden = false; acts.hidden = true;
       });
       card.querySelector('[data-a="cancel"]').addEventListener("click", function () { conf.hidden = true; acts.hidden = false; });
@@ -1303,57 +1465,160 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       box.append(card);
     });
   }
-  function setPaid(id, paid, method, date) {
-    var fields = paid
-      ? { paid: true, paidDate: date || todayIso(), paidMethod: method || settings.lastMethod || "Bank transfer" }
-      : { paid: false, paidDate: "", paidMethod: "" };
-    if (paid) { settings.lastMethod = fields.paidMethod; lsSet(LS_SETTINGS, settings); }
+  // Change payment details on both the open invoice and its saved copy
+  function payMutate(id, fn) {
     if (savedLocal[id]) {
-      Object.assign(savedLocal[id], fields);
+      fn(savedLocal[id]);
       savedLocal[id].updatedAt = Date.now();
       try { localStorage.setItem(LS_SAVED, JSON.stringify(savedLocal)); } catch (e) { toast("Couldn't update that invoice."); }
     }
-    if (id === inv.id) { Object.assign(inv, fields); changed(); }
+    if (id === inv.id) { fn(inv); changed(); }
     renderSaved();
   }
-  function togglePaid(s) {
-    var before = { paid: !!s.paid, method: s.paidMethod, date: s.paidDate };
-    setPaid(s.id, !s.paid);
-    toast((s.paid ? "#" + s.no + " marked as paid" : "#" + s.no + " marked as unpaid"), "Undo", function () {
-      setPaid(s.id, before.paid, before.method, before.date);
+  function docById(id) { return id === inv.id ? inv : savedLocal[id]; }
+  function paySnap(d) { return clone({ paid: !!d.paid, paidDate: d.paidDate || "", paidMethod: d.paidMethod || "", payments: paymentsOf(d) }); }
+  function rememberMethod(m) { settings.lastMethod = m; lsSet(LS_SETTINGS, settings); }
+  function payInFull(id, date, method) {
+    date = date || todayIso(); method = method || settings.lastMethod || "Bank transfer";
+    rememberMethod(method);
+    var bal = balanceOf(docById(id)), p = bal > 0 ? { id: lid(), date: date, amount: String(bal), method: method } : null;
+    payMutate(id, function (d) {
+      d.payments = paymentsOf(d).concat(p ? [clone(p)] : []);
+      d.paid = true; d.paidDate = date; d.paidMethod = method;
     });
   }
+  function recordPayment(id, amount, date, method) {
+    rememberMethod(method);
+    var p = { id: lid(), date: date || todayIso(), amount: String(round2(amount)), method: method };
+    payMutate(id, function (d) {
+      d.payments = paymentsOf(d).concat([clone(p)]);
+      if (round2(compute(d).total - paidSoFar(d)) <= 0) { d.paid = true; d.paidDate = p.date; d.paidMethod = p.method; }
+    });
+  }
+  function removePayment(id, pid) {
+    payMutate(id, function (d) {
+      d.payments = paymentsOf(d).filter(function (x) { return x.id !== pid; });
+      d.paid = false;
+      if (d.payments.length && round2(compute(d).total - paidSoFar(d)) <= 0) d.paid = true;
+      else { d.paidDate = ""; d.paidMethod = ""; }
+    });
+  }
+  function unpay(id) { payMutate(id, function (d) { d.payments = []; d.paid = false; d.paidDate = ""; d.paidMethod = ""; }); }
+  function restorePay(id, snap) { payMutate(id, function (d) { Object.assign(d, clone(snap)); }); }
+  function togglePaid(s) {
+    var before = paySnap(s);
+    if (s.paid) unpay(s.id); else payInFull(s.id);
+    toast("#" + s.no + (s.paid ? " marked as paid" : " marked as unpaid"), "Undo", function () { restorePay(s.id, before); });
+  }
   function renderPayCard() {
-    var st = statusOf(inv), chip = $("pay-status"), due = dueText(eff());
+    $("pay-card").hidden = isQuote(inv);
+    if (isQuote(inv)) return;
+    var st = statusOf(inv), chip = $("pay-status"), due = dueText(), c = compute();
     chip.className = "chip " + st;
-    chip.textContent = st === "paid" ? "Paid" : st === "overdue" ? "Overdue" : "Not paid yet";
+    chip.textContent = st === "unpaid" ? "Not paid yet" : STATUS_WORDS[st];
+    setText("pay-total", fmtMoney(c.total));
+    var list = $("pay-list"), ps = paymentsOf(inv);
+    list.innerHTML = "";
+    ps.forEach(function (x) {
+      var row = document.createElement("div"); row.className = "pay-row";
+      var l = document.createElement("span"); l.textContent = fmtShort(x.date) + " · " + x.method;
+      var a = document.createElement("span"); a.className = "amt"; a.textContent = fmtMoney(num(x.amount));
+      var rm = document.createElement("button"); rm.type = "button"; rm.className = "mini"; rm.textContent = "Remove";
+      rm.addEventListener("click", function () {
+        var before = paySnap(inv), id = inv.id;
+        removePayment(id, x.id);
+        toast("Payment removed", "Undo", function () { restorePay(id, before); });
+      });
+      row.append(l, a, rm); list.append(row);
+    });
+    list.hidden = !ps.length;
+    $("pay-bal-row").hidden = !ps.length || inv.paid;
+    setText("pay-bal", fmtMoney(balanceOf(inv)));
     $("pay-unpaid").hidden = !!inv.paid;
     $("pay-paid").hidden = !inv.paid;
     if (inv.paid) {
-      setText("paid-line", "Paid" + (inv.paidDate ? " on " + fmtDate(inv.paidDate) : "") + (inv.paidMethod ? " by " + inv.paidMethod.toLowerCase() : "") + ".");
+      setText("paid-line", "Paid in full" + (inv.paidDate ? " on " + fmtDate(inv.paidDate) : "") + (inv.paidMethod ? " by " + inv.paidMethod.toLowerCase() : "") + ".");
     } else {
       if (!$("paid-date").value) $("paid-date").value = todayIso();
       if (!$("paid-method").dataset.touched) $("paid-method").value = settings.lastMethod || "Bank transfer";
+      if (!$("pay-amt").dataset.touched || document.activeElement !== $("pay-amt")) { $("pay-amt").value = balanceOf(inv) > 0 ? balanceOf(inv).toFixed(2) : ""; delete $("pay-amt").dataset.touched; }
     }
-    $("mark-paid").textContent = st === "overdue" && due ? "Mark as paid (was due " + due + ")" : "Mark as paid";
+    $("mark-paid").textContent = (ps.length ? "Paid the rest" : "Paid in full") + (st === "overdue" && due ? " (was due " + due + ")" : "");
   }
   $("paid-method").addEventListener("change", function () { this.dataset.touched = "1"; });
+  $("pay-amt").addEventListener("input", function () { this.dataset.touched = "1"; });
   $("mark-paid").addEventListener("click", function () {
-    setPaid(inv.id, true, $("paid-method").value, $("paid-date").value || todayIso());
+    payInFull(inv.id, $("paid-date").value || todayIso(), $("paid-method").value);
     delete $("paid-method").dataset.touched;
     toast("Invoice #" + inv.no + " marked as paid");
   });
+  $("pay-part").addEventListener("click", function () {
+    var amt = num($("pay-amt").value);
+    if (!(amt > 0)) { toast("Put in how much they paid first."); $("pay-amt").focus(); return; }
+    var before = paySnap(inv), id = inv.id;
+    recordPayment(id, amt, $("paid-date").value || todayIso(), $("paid-method").value);
+    delete $("pay-amt").dataset.touched;
+    toast(fmtMoney(amt) + " recorded" + (inv.paid ? ". Now paid in full." : ". " + fmtMoney(balanceOf(inv)) + " left to pay."), "Undo", function () { restorePay(id, before); });
+  });
   $("mark-unpaid").addEventListener("click", function () {
-    var before = { method: inv.paidMethod, date: inv.paidDate }, id = inv.id;
-    setPaid(id, false);
-    $("paid-date").value = before.date || todayIso();
-    toast("Marked as unpaid", "Undo", function () { setPaid(id, true, before.method, before.date); });
+    var before = paySnap(inv), id = inv.id;
+    unpay(id);
+    toast("Marked as unpaid", "Undo", function () { restorePay(id, before); });
+  });
+
+  // ---------- Quotes ----------
+  function renderQuoteCard() {
+    $("quote-card").hidden = !isQuote(inv);
+    if (!isQuote(inv)) return;
+    var st = quoteStatusOf(inv), chip = $("quote-status"), v = validIso(inv);
+    chip.className = "chip " + st;
+    chip.textContent = STATUS_WORDS[st];
+    setText("quote-line", st === "accepted" ? "The customer said yes" + (inv.convertedTo ? " and it became invoice #" + inv.convertedTo : "") + "."
+      : st === "declined" ? "The customer said no."
+      : st === "expired" ? "This quote ran out on " + fmtDate(v) + ". You can still turn it into an invoice."
+      : v ? "Valid until " + fmtDate(v) + "." : "");
+    $("quote-accept").hidden = st === "accepted";
+    $("quote-decline").hidden = st === "declined" || st === "accepted";
+    $("quote-reopen").hidden = st !== "declined";
+  }
+  async function convertQuote(q) {
+    await flush();
+    var quote = clone(q), qid = quote.id;
+    var keep = inv;
+    var next = clone(quote);
+    next.id = uid(); next.docType = "invoice"; next.date = todayIso(); next.snap = null;
+    next.paid = false; next.paidDate = ""; next.paidMethod = ""; next.payments = [];
+    delete next.quoteStatus; delete next.convertedTo; delete next.kind; delete next.total; delete next.subtotal; delete next.updatedAt;
+    next.fromQuote = quote.no;
+    next.items.forEach(function (it) { it.id = lid(); });
+    next.no = ""; inv = next; next.no = nextNo("invoice"); inv = keep;
+    if (savedLocal[qid]) { savedLocal[qid].quoteStatus = "accepted"; savedLocal[qid].convertedTo = next.no; savedLocal[qid].updatedAt = Date.now(); lsSet(LS_SAVED, savedLocal); }
+    inv = next; inv.isExample = false; lastSavedJson = null;
+    lsSet(LS_DRAFT, draftBody());
+    renderAll(); show("edit");
+    changed();
+    toast("Quote #" + quote.no + " is now invoice #" + inv.no);
+  }
+  $("quote-accept").addEventListener("click", function () { convertQuote(invBody()); });
+  $("quote-decline").addEventListener("click", function () { inv.quoteStatus = "declined"; changed(); });
+  $("quote-reopen").addEventListener("click", function () { inv.quoteStatus = ""; changed(); });
+  document.querySelectorAll("[data-doc]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var want = b.getAttribute("data-doc");
+      if ((want === "quote") === isQuote(inv)) return;
+      inv.docType = want;
+      inv.no = nextNo(want);
+      if (want === "quote") { inv.paid = false; inv.paidDate = ""; inv.paidMethod = ""; inv.payments = []; }
+      $("inv-no").value = inv.no;
+      changed(); renderLines();
+      toast("Now a " + want + ", numbered " + inv.no);
+    });
   });
   async function deleteInvoice(s) {
     var copy = clone(s), wasOpen = s.id === inv.id;
     try {
       delete savedLocal[s.id]; lsSet(LS_SAVED, savedLocal);
-      if (wasOpen) { inv = blankInvoice(nextNo()); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); renderAll(); }
+      if (wasOpen) { inv = blankInvoice(nextNo("invoice")); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); renderAll(); }
       else renderSaved();
       toast("Invoice #" + (s.no || "") + " deleted", "Undo", function () {
         savedLocal[copy.id] = copy; lsSet(LS_SAVED, savedLocal);
@@ -1365,7 +1630,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     await flush();
     if (asCopy) {
       inv = clone(s);
-      inv.id = uid(); inv.no = nextNo(); inv.date = todayIso(); inv.paid = false; inv.snap = null;
+      inv.id = uid(); inv.no = nextNo(inv.docType); inv.date = todayIso(); inv.paid = false; inv.snap = null;
+      inv.paidDate = ""; inv.paidMethod = ""; inv.payments = []; inv.photos = [];
+      delete inv.quoteStatus; delete inv.convertedTo; delete inv.fromQuote;
+      if (inv.terms === "date") { inv.terms = ""; inv.dueDate = ""; }
       inv.items.forEach(function (it) { it.id = lid(); });
       lastSavedJson = null;
     } else {
@@ -1377,23 +1645,23 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     lsSet(LS_DRAFT, draftBody());
     renderAll();
     show("edit");
-    toast(asCopy ? "Copied to new invoice #" + inv.no : "Opened invoice #" + inv.no);
+    toast((asCopy ? "Copied to new " : "Opened ") + (isQuote(inv) ? "quote" : "invoice") + " #" + inv.no);
     if (asCopy) changed();
   }
 
   async function startNew() {
     await flush();
-    inv = blankInvoice(nextNo());
+    inv = blankInvoice(nextNo("invoice"));
     lastSavedJson = null;
     lsSet(LS_DRAFT, draftBody());
     renderAll();
     show("edit");
-    toast("New invoice #" + inv.no + " started");
+    toast("New invoice #" + inv.no + " started. Tap Quote at the top to make it a quote.");
   }
 
   // ---------- Toast ----------
   var toastTimer;
-  function toast(msg, actLabel, act) {
+  function toast(msg, actLabel, act, ms) {
     var t = $("toast"), b = $("toast-act");
     setText("toast-msg", msg);
     b.hidden = !act;
@@ -1401,7 +1669,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     if (act) b.textContent = actLabel;
     t.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.hidden = true; }, act ? 5000 : 2400);
+    toastTimer = setTimeout(function () { t.hidden = true; }, ms || (act ? 5000 : 2400));
   }
 
   // ---------- Tabs ----------
@@ -1431,7 +1699,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   function asText() {
     var c = compute(), s = eff(), out = [];
     out.push((s.bizName || "Invoice").toUpperCase() + (s.bizTagline ? " · " + s.bizTagline : ""));
-    out.push("Invoice " + (inv.no ? "#" + inv.no : "") + (inv.date ? " · " + fmtDate(inv.date) : "") + (inv.paid ? " · PAID" : ""));
+    out.push((isQuote(inv) ? "Quote " : "Invoice ") + (inv.no ? "#" + inv.no : "") + (inv.date ? " · " + fmtDate(inv.date) : "") + (inv.paid && !isQuote(inv) ? " · PAID" : ""));
+    if (isQuote(inv) && validIso(inv)) out.push("Valid until " + fmtDate(validIso(inv)));
     if (inv.custName) out.push("Bill to: " + inv.custName);
     if (inv.job) out.push("Job: " + inv.job.replace(/\n+/g, " "));
     out.push("");
@@ -1444,8 +1713,12 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       out.push("Subtotal: " + fmtMoney(c.sub));
       out.push(taxLabelText() + ": " + fmtMoney(c.tax));
     }
-    out.push("TOTAL DUE: " + fmtMoney(c.total));
-    var pay = payLines(s), terms = termsText(s);
+    if (!isQuote(inv) && !inv.paid && paidSoFar(inv) > 0) {
+      out.push("Total: " + fmtMoney(c.total));
+      out.push("Paid so far: " + fmtMoney(paidSoFar(inv)));
+      out.push("BALANCE DUE: " + fmtMoney(balanceOf(inv)));
+    } else out.push((isQuote(inv) || inv.paid ? "TOTAL: " : "TOTAL DUE: ") + fmtMoney(c.total));
+    var pay = payLines(s), terms = termsText();
     if (terms || pay.length) { out.push(""); if (terms) out.push(terms); pay.forEach(function (l) { out.push(l); }); }
     if (s.notes) { out.push(""); out.push(s.notes); }
     var contact = [s.bizPhone, s.bizEmail, s.bizWebsite].filter(Boolean).join(" · ");
@@ -1474,19 +1747,22 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     try { return fn(); } finally { inv = keep; }
   }
   function messageText(kind) {
-    var s = eff(), c = compute(), due = dueText(s), late = statusOf(inv) === "overdue";
-    var tpl = kind === "reminder" ? settings.remTemplate : inv.paid ? settings.rcptTemplate : settings.msgTemplate;
-    var dueWords = due && !inv.paid ? (kind === "reminder" ? (late ? "It was due on " : "It's due by ") : "Payment is due by ") + due + ". " : "";
+    var s = eff(), c = compute(), di = dueInfo(inv), due = dueText(), late = statusOf(inv) === "overdue", q = isQuote(inv);
+    var tpl = q ? settings.quoteTemplate : kind === "reminder" ? settings.remTemplate : inv.paid ? settings.rcptTemplate : settings.msgTemplate;
+    var dueWords = q || inv.paid ? "" : di.words ? (kind === "reminder" ? "It's due " : "Payment is due ") + di.words + ". "
+      : due ? (kind === "reminder" ? (late ? "It was due on " : "It's due by ") : "Payment is due by ") + due + ". " : "";
+    var amount = !q && !inv.paid && paidSoFar(inv) > 0 ? balanceOf(inv) : c.total;
     return (tpl || "")
       .replace(/\{customer\}/g, String(inv.custName || "").trim() || "there")
       .replace(/\{number\}/g, inv.no ? "#" + inv.no : "")
-      .replace(/\{total\}/g, fmtMoney(c.total))
+      .replace(/\{total\}/g, fmtMoney(amount))
+      .replace(/\{valid\}/g, q && validIso(inv) ? "It's valid until " + fmtDate(validIso(inv)) + ". " : "")
       .replace(/\{due\}/g, dueWords)
       .replace(/\{business\}/g, s.bizName || "us")
       .replace(/[ \t]+/g, " ").trim();
   }
   function fileBase() {
-    return ("Invoice " + (inv.no || "") + (inv.custName ? " - " + inv.custName : "")).replace(/[\\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
+    return ((isQuote(inv) ? "Quote " : "Invoice ") + (inv.no || "") + (inv.custName ? " - " + inv.custName : "")).replace(/[\\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
   }
   function contactBits() {
     var c = String(inv.custContact || "");
@@ -1497,7 +1773,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   function renderShare() {
     var msg = messageText(), cb = contactBits(), s = eff();
     setText("msg-preview", msg);
-    var subject = "Invoice " + (inv.no ? "#" + inv.no + " " : "") + "from " + (s.bizName || "us");
+    var subject = (isQuote(inv) ? "Quote " : "Invoice ") + (inv.no ? "#" + inv.no + " " : "") + "from " + (s.bizName || "us");
     $("email-cust").hidden = !cb.email;
     if (cb.email) $("email-cust").href = "mailto:" + cb.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(msg + "\n\n" + asText());
     $("text-cust").hidden = !cb.phone;
@@ -1553,6 +1829,140 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     settings.logo = ""; settings.logoW = 0; settings.logoH = 0;
     settingsChanged(); renderLogo(); toast("Back to the 1 Blast logo");
   });
+  // ---------- Photos (kept in the phone's IndexedDB; invoices hold their ids) ----------
+  var photoCache = {}, idbP = null;
+  function idb() {
+    if (!idbP) idbP = new Promise(function (res, rej) {
+      var r;
+      try { r = indexedDB.open("blast-invoice-photos", 1); } catch (e) { rej(e); return; }
+      r.onupgradeneeded = function () { r.result.createObjectStore("photos"); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+    return idbP;
+  }
+  function idbDo(mode, fn) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction("photos", mode), req = fn(tx.objectStore("photos"));
+        tx.oncomplete = function () { res(req ? req.result : undefined); };
+        tx.onerror = tx.onabort = function () { rej(tx.error); };
+      });
+    });
+  }
+  function photoPut(id, data) { return idbDo("readwrite", function (st) { return st.put(data, id); }); }
+  function photoGet(id) { return idbDo("readonly", function (st) { return st.get(id); }); }
+  function photoDel(id) { return idbDo("readwrite", function (st) { return st.delete(id); }); }
+  function photoKeys() { return idbDo("readonly", function (st) { return st.getAllKeys(); }); }
+  function ensurePhotos(ids) {
+    ids = ids.filter(function (id) { return !(id in photoCache); });
+    if (!ids.length) return Promise.resolve();
+    return Promise.all(ids.map(function (id) {
+      return photoGet(id).then(function (v) { photoCache[id] = v || null; }, function () { photoCache[id] = null; });
+    }));
+  }
+  function usedPhotoIds() {
+    var used = {};
+    Object.keys(savedLocal).map(function (k) { return savedLocal[k]; }).concat([inv]).forEach(function (d) {
+      (d.photos || []).forEach(function (ph) { used[ph.id] = 1; });
+    });
+    return Object.keys(used);
+  }
+  function photoList() { return Array.isArray(inv.photos) ? inv.photos : []; }
+  function shownPhotos() { return inv.hidePhotos ? [] : photoList().filter(function (ph) { return photoCache[ph.id]; }); }
+  function dataUrlToBlob(u) {
+    var parts = u.split(","), bin = atob(parts[1]), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: (parts[0].match(/:(.*?);/) || [])[1] || "image/jpeg" });
+  }
+  var gridSig = "", paperSig = "";
+  function renderPhotos() {
+    var ps = photoList();
+    $("photo-show").checked = !inv.hidePhotos;
+    setText("photo-count", ps.length ? ps.length + (ps.length === 1 ? " photo" : " photos") : "");
+    $("send-photos").hidden = !ps.length;
+    var missing = ps.map(function (ph) { return ph.id; }).filter(function (id) { return !(id in photoCache); });
+    if (missing.length) ensurePhotos(missing).then(function () { renderPhotos(); renderPaperPhotos(); });
+    var sig = ps.map(function (ph) { return ph.id + (photoCache[ph.id] ? "+" : "-"); }).join(",");
+    if (sig === gridSig) return;
+    gridSig = sig;
+    var grid = $("photo-grid");
+    grid.innerHTML = "";
+    ps.forEach(function (ph, i) {
+      var box = document.createElement("div"); box.className = "photo";
+      if (photoCache[ph.id]) { var im = document.createElement("img"); im.src = photoCache[ph.id]; im.alt = "Job photo " + (i + 1); box.append(im); }
+      var rm = document.createElement("button"); rm.type = "button"; rm.textContent = "Remove";
+      rm.addEventListener("click", function () {
+        var at = photoList().indexOf(ph);
+        inv.photos = photoList().filter(function (x) { return x !== ph; });
+        changed(); renderPhotos();
+        toast("Photo removed", "Undo", function () {
+          var l = photoList().slice(); l.splice(Math.min(at, l.length), 0, ph); inv.photos = l;
+          changed(); renderPhotos();
+        });
+      });
+      box.append(rm); grid.append(box);
+    });
+  }
+  function renderPaperPhotos() {
+    var ps = shownPhotos();
+    $("p-photos-wrap").hidden = !ps.length;
+    var sig = ps.map(function (ph) { return ph.id; }).join(",");
+    if (sig === paperSig) return;
+    paperSig = sig;
+    var box = $("p-photos");
+    box.innerHTML = "";
+    ps.forEach(function (ph, i) { var im = document.createElement("img"); im.src = photoCache[ph.id]; im.alt = "Job photo " + (i + 1); box.append(im); });
+  }
+  function shrinkPhoto(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var sc = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+        var w = Math.max(1, Math.round(img.naturalWidth * sc)), h = Math.max(1, Math.round(img.naturalHeight * sc));
+        var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        var cx = cv.getContext("2d"); cx.fillStyle = "#ffffff"; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        res({ data: cv.toDataURL("image/jpeg", 0.72), w: w, h: h });
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error("image")); };
+      img.src = url;
+    });
+  }
+  $("photo-add").addEventListener("click", function () { $("photo-file").click(); });
+  $("photo-show").addEventListener("change", function () { inv.hidePhotos = !this.checked; changed(); });
+  $("photo-file").addEventListener("change", function () {
+    var files = Array.prototype.slice.call(this.files || []);
+    this.value = "";
+    if (!files.length) return;
+    var target = inv, added = 0, failed = 0;
+    toast("Adding " + files.length + (files.length === 1 ? " photo…" : " photos…"));
+    files.reduce(function (chain, f) {
+      return chain.then(function () {
+        return shrinkPhoto(f).then(function (r) {
+          var id = "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          return photoPut(id, r.data).then(function () {
+            photoCache[id] = r.data;
+            target.photos = (Array.isArray(target.photos) ? target.photos : []).concat([{ id: id, w: r.w, h: r.h }]);
+            added++;
+          });
+        }).catch(function () { failed++; });
+      });
+    }, Promise.resolve()).then(function () {
+      if (target === inv) { changed(); renderPhotos(); }
+      toast(added ? added + (added === 1 ? " photo added" : " photos added") + (failed ? ", " + failed + " couldn't be added" : "")
+        : "Couldn't add those photos. The phone may be out of space.");
+    });
+  });
+  $("send-photos").addEventListener("click", function () {
+    var ps = photoList().filter(function (ph) { return photoCache[ph.id]; });
+    if (!ps.length) return;
+    var files = ps.map(function (ph, i) { return new File([dataUrlToBlob(photoCache[ph.id])], fileBase() + " photo " + (i + 1) + ".jpg", { type: "image/jpeg" }); });
+    if (navigator.canShare && navigator.canShare({ files: files })) {
+      navigator.share({ files: files, text: messageText() }).catch(function (e) { if (!e || e.name !== "AbortError") files.forEach(function (f) { download(f, f.name); }); });
+    } else files.forEach(function (f) { download(f, f.name); });
+  });
+
   function buildPdf(lib) {
     var s = eff(), c = compute(), d = new lib.jsPDF({ unit: "mm", format: "a4" });
     var W = 210, M = 18, R = W - M, y = 24;
@@ -1566,25 +1976,25 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     if (lh > 34) { lh = 34; lw = 34 * dim[0] / dim[1]; }
     d.setFont("times", "bolditalic"); d.setFontSize(11);
     var tag = s.bizTagline ? d.splitTextToSize(pdfSafe(s.bizTagline), 70) : [];
-    var due = dueText(s);
+    var q = isQuote(inv), dl0 = q ? (validIso(inv) ? "Valid until " + fmtDate(validIso(inv)) : "") : dueLabel();
     var bandH = Math.max(50, 41 + contact.length * 4.6 + 4, 6 + lh + (tag.length ? tag.length * 4.6 + 5 : 4));
     d.setFillColor(6, 36, 2); d.rect(0, 0, W, bandH, "F");
     d.setFillColor(255, 187, 28); d.rect(0, bandH, W, 1.6, "F");
     d.addImage(logoSrc(), "JPEG", M, 6, lw, lh);
     if (tag.length) { d.setTextColor(212, 165, 55); d.text(tag, M, 6 + lh + 5); }
     d.setFont("helvetica", "bolditalic"); d.setFontSize(24); d.setTextColor(255, 187, 28);
-    d.text("INVOICE", R, 18, { align: "right" });
+    d.text(q ? "QUOTE" : "INVOICE", R, 18, { align: "right" });
     d.setFont("helvetica", "normal"); d.setFontSize(10); d.setTextColor(244, 241, 230);
     if (inv.no) d.text("No. " + pdfSafe(inv.no), R, 25, { align: "right" });
     if (inv.date) d.text(pdfSafe(fmtDate(inv.date)), R, 30.5, { align: "right" });
-    if (inv.paid) { d.setFont("helvetica", "bold"); d.setTextColor(143, 220, 171); d.text("PAID" + (inv.paidDate ? " " + pdfSafe(fmtDate(inv.paidDate)) : ""), R, 36, { align: "right" }); }
-    else if (due) d.text("Due " + pdfSafe(due), R, 36, { align: "right" });
+    if (inv.paid && !q) { d.setFont("helvetica", "bold"); d.setTextColor(143, 220, 171); d.text("PAID" + (inv.paidDate ? " " + pdfSafe(fmtDate(inv.paidDate)) : ""), R, 36, { align: "right" }); }
+    else if (dl0) d.text(pdfSafe(dl0), R, 36, { align: "right" });
     d.setFont("helvetica", "normal"); d.setFontSize(9); d.setTextColor(207, 216, 201);
     contact.forEach(function (line, i) { d.text(pdfSafe(line), R, 43 + i * 4.6, { align: "right" }); });
     y = bandH + 12;
 
     d.setFont("helvetica", "bold"); d.setFontSize(8); grey();
-    d.text("BILL TO", M, y); d.text("JOB", M + 90, y); y += 5;
+    d.text(q ? "QUOTE FOR" : "BILL TO", M, y); d.text("JOB", M + 90, y); y += 5;
     d.setFont("helvetica", "normal"); d.setFontSize(10.5); ink();
     var cl = d.splitTextToSize(pdfSafe([inv.custName, inv.custContact].filter(Boolean).join("\n") || "-"), 84);
     var jl = d.splitTextToSize(pdfSafe(inv.job || "-"), 84);
@@ -1603,7 +2013,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     if (!rows.length) { d.setFont("helvetica", "normal"); grey(); d.text("No charges", M + 2, y); y += 8; }
     rows.forEach(function (l) {
       d.setFont("helvetica", "normal");
-      var dl = d.splitTextToSize(pdfSafe(l.d), 82);
+      var dl = d.splitTextToSize(pdfSafe(l.d + (l.noTax ? " (" + l.noTaxWords + ")" : "")), 82);
       var h = dl.length * 4.8 + 4;
       pageCheck(h);
       ink(); d.text(dl, M + 2, y);
@@ -1621,14 +2031,20 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     d.setFont("helvetica", "normal"); d.setFontSize(10);
     grey(); d.text("Subtotal", LX, y); ink(); d.text(pdfSafe(fmtMoney(c.sub)), R - 2, y, { align: "right" }); y += 6;
     if (c.rate > 0) { grey(); d.text(pdfSafe(taxLabelText()), LX, y); ink(); d.text(pdfSafe(fmtMoney(c.tax)), R - 2, y, { align: "right" }); y += 6; }
+    var part = !q && !inv.paid && paidSoFar(inv) > 0;
+    if (part) {
+      grey(); d.text("Total", LX, y); ink(); d.text(pdfSafe(fmtMoney(c.total)), R - 2, y, { align: "right" }); y += 6;
+      grey(); d.text("Paid so far", LX, y); ink(); d.text(pdfSafe("-" + fmtMoney(paidSoFar(inv))), R - 2, y, { align: "right" }); y += 6;
+    }
     y += 1;
     d.setFillColor(255, 187, 28); d.rect(LX - 3, y - 5, R - LX + 3, 9.5, "F");
     d.setFont("helvetica", "bold"); d.setFontSize(13); ink();
-    d.text("TOTAL DUE", LX, y + 1.5); d.text(pdfSafe(fmtMoney(c.total)), R - 2, y + 1.5, { align: "right" });
+    d.text(part ? "BALANCE DUE" : q || inv.paid ? "TOTAL" : "TOTAL DUE", LX, y + 1.5);
+    d.text(pdfSafe(fmtMoney(part ? balanceOf(inv) : c.total)), R - 2, y + 1.5, { align: "right" });
     y += 4;
     y += 14;
 
-    var pay = payLines(s), terms = termsText(s), legal = legalText(s);
+    var pay = payLines(s), terms = termsText(), legal = legalText(s);
     if (pay.length || terms || s.notes || legal) {
       pageCheck(12);
       d.setDrawColor(221, 227, 229); d.setLineWidth(0.3); d.line(M, y - 5, R, y - 5);
@@ -1651,6 +2067,22 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       d.setFont("helvetica", "normal"); d.setFontSize(8); grey();
       pageCheck(6);
       d.text(pdfSafe(legal), M, y);
+    }
+    var phs = shownPhotos();
+    if (phs.length) {
+      d.addPage(); y = 20;
+      d.setFont("helvetica", "bold"); d.setFontSize(12); ink();
+      d.text("Photos" + (inv.no ? " - " + (q ? "Quote " : "Invoice ") + pdfSafe(inv.no) : ""), M, y); y += 8;
+      var colW = (R - M - 6) / 2, col = 0, rowH = 0;
+      phs.forEach(function (ph) {
+        var w = colW, h = w * ph.h / ph.w;
+        if (h > 110) { h = 110; w = h * ph.w / ph.h; }
+        if (col === 0 && y + 110 > 285) { d.addPage(); y = 20; }
+        d.addImage(photoCache[ph.id], "JPEG", M + col * (colW + 6), y, w, h);
+        rowH = Math.max(rowH, h);
+        col++;
+        if (col === 2) { col = 0; y += rowH + 6; rowH = 0; }
+      });
     }
     return d.output("blob");
   }
@@ -1680,6 +2112,19 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   // The PDF is built inside the tap, so the phone lets the share menu open
   function sendPdfFor(doc, kind) {
     if (!window.jspdf) { toast("The PDF maker didn't load. Connect to the internet and reopen the app."); return; }
+    var need = doc.hidePhotos ? [] : (doc.photos || []).map(function (ph) { return ph.id; }).filter(function (id) { return !(id in photoCache); });
+    if (need.length) {
+      toast("Getting the photos ready…");
+      ensurePhotos(need).then(function () {
+        var o;
+        try { o = withInvoice(doc, function () { return { blob: buildPdf(window.jspdf), name: fileBase() + ".pdf", text: messageText(kind) }; }); }
+        catch (e) { toast("Couldn't make the PDF."); return; }
+        shareOrDownload(o.blob, o.name, "application/pdf", o.text, function () {
+          toast("PDF ready", "Send", function () { shareOrDownload(o.blob, o.name, "application/pdf", o.text); }, 15000);
+        });
+      });
+      return;
+    }
     var out;
     try {
       out = withInvoice(doc, function () { return { blob: buildPdf(window.jspdf), name: fileBase() + ".pdf", text: messageText(kind) }; });
@@ -1748,13 +2193,15 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     flush();
     var list = sortedSaved();
     if (!list.length) { toast("No saved invoices yet."); return; }
-    var rows = [["Invoice no", "Date", "Customer", "Customer contact", "Job", "Subtotal", "Tax", "Total", "Status", "Due date", "Paid on", "Paid by"]];
+    var rows = [["Type", "Number", "Date", "Customer", "Customer contact", "Job", "Subtotal", "Tax", "Total", "Paid so far", "Left to pay", "Status", "Due date", "Paid on", "Paid by"]];
     list.forEach(function (doc) {
       rows.push(withInvoice(doc, function () {
         var c = compute(), s = eff();
         var st = statusOf(inv);
-        return [inv.no, inv.date, inv.custName, inv.custContact, inv.job, c.sub.toFixed(2), c.tax.toFixed(2), c.total.toFixed(2),
-          st === "paid" ? "Paid" : st === "overdue" ? "Overdue" : "Unpaid", dueIsoOf(inv), inv.paidDate || "", inv.paidMethod || ""];
+        var qt = isQuote(inv);
+        return [qt ? "Quote" : "Invoice", inv.no, inv.date, inv.custName, inv.custContact, inv.job, c.sub.toFixed(2), c.tax.toFixed(2), c.total.toFixed(2),
+          qt ? "" : paidSoFar(inv).toFixed(2), qt ? "" : balanceOf(inv).toFixed(2), STATUS_WORDS[st],
+          qt ? validIso(inv) : dueIsoOf(inv) || dueInfo(inv).words, inv.paidDate || "", inv.paidMethod || ""];
       }));
     });
     var csv = "\ufeff" + rows.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n");
@@ -1765,11 +2212,18 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   // ---------- Backup ----------
   function makeBackup() {
     flush();
-    var data = { app: "blast-invoice", version: 2, exportedAt: new Date().toISOString(), settings: settings, invoices: savedLocal };
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    shareOrDownload(blob, "Invoices backup " + todayIso() + ".json", "application/json").then(function (r) {
-      if (r === "cancelled") return;
-      settings.lastBackup = todayIso(); settingsChanged(); renderSaved();
+    var ids = usedPhotoIds();
+    ensurePhotos(ids).then(function () {
+      var photos = {};
+      ids.forEach(function (id) { if (photoCache[id]) photos[id] = photoCache[id]; });
+      var data = { app: "blast-invoice", version: 3, exportedAt: new Date().toISOString(), settings: settings, invoices: savedLocal, photos: photos };
+      var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+      var name = "Invoices backup " + todayIso() + ".json";
+      function done(r) { if (r === "cancelled") return; settings.lastBackup = todayIso(); settingsChanged(); renderSaved(); }
+      shareOrDownload(blob, name, "application/json", null, function () {
+        toast("Backup ready", "Save", function () { shareOrDownload(blob, name, "application/json").then(done); }, 15000);
+        return "cancelled";
+      }).then(done);
     });
   }
   function renderBackupNag(count) {
@@ -1801,6 +2255,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         });
         if (data.settings) { settings = mergeSettings(data.settings); lsSet(LS_SETTINGS, settings); }
         lsSet(LS_SAVED, savedLocal);
+        var photos = data.photos && typeof data.photos === "object" ? data.photos : {};
+        Promise.all(Object.keys(photos).map(function (id) {
+          return photoPut(id, photos[id]).then(function () { photoCache[id] = photos[id]; }, function () {});
+        })).then(function () { gridSig = paperSig = ""; renderAll(); });
         renderAll();
         toast(added ? "Restored " + added + " invoice" + (added === 1 ? "" : "s") : "Backup restored. Nothing new in it.");
       } catch (e) { toast("That file isn't an invoice backup from this app."); }
@@ -1812,6 +2270,13 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
   if (savedLocal[inv.id]) lastSavedJson = stable(stripForCompare(savedLocal[inv.id]));
   renderAll();
+  setTimeout(function () {
+    photoKeys().then(function (keys) {
+      var used = {};
+      usedPhotoIds().forEach(function (id) { used[id] = 1; });
+      (keys || []).forEach(function (k) { if (!used[k]) photoDel(k); });
+    }).catch(function () {});
+  }, 4000);
   // Keep a copy of the app and its PDF and picture makers so it opens with no signal
   try {
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});

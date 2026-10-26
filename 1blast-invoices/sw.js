@@ -1,6 +1,6 @@
 // Offline copy of the 1 Blast invoice app. The app page is fetched fresh when online
 // (so updates show straight away) and served from this cache when there's no signal.
-const CACHE = "1blast-v1";
+const CACHE = "1blast-v2";
 const CORE = [
   "./",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
