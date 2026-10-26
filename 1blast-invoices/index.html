@@ -378,6 +378,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .p-foot { border-top: 1px solid var(--paper-line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
 .p-notes { border-top: 0 !important; padding-top: 0 !important; }
 .p-terms { font-size: 13px; color: var(--paper-muted); margin-top: 4px; }
+#p-pay-wrap { background: #f4f6f1; border: 1px solid var(--paper-line); border-radius: 4px; padding: 10px 12px; }
+#p-pay-wrap .p-val { font-family: var(--f-num); font-size: 14px; line-height: 1.6; }
 .p-legal { font-size: 12px; color: var(--paper-muted); font-family: var(--f-num); }
 
 @media (max-width: 360px) {
@@ -553,6 +555,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     </div>
     <div class="card">
       <p class="eyebrow">Send it</p>
+      <div class="confirm" id="bank-missing" hidden>
+        <p>Your bank details aren't filled in yet, so customers can't see how to pay you.</p>
+        <button class="btn primary" id="bank-fix" type="button">Add bank details</button>
+      </div>
       <div class="send-grid">
         <button class="send-opt" id="send-email" type="button"><span class="t">Email</span><small id="send-email-sub">PDF attached</small></button>
         <button class="send-opt" id="send-pic" type="button"><span class="t">Picture</span><small>For WhatsApp</small></button>
@@ -560,9 +566,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       </div>
       <p class="hint" id="send-hint"></p>
       <button class="linkbtn" id="send-photos" type="button" hidden>Send the job photos as well</button>
-      <p class="p-label" style="margin-top:4px">Message that goes with it</p>
-      <div class="msg-preview" id="msg-preview"></div>
-      <p class="hint">Change this message on the Company tab.</p>
+      <details>
+        <summary class="linkbtn">See what the email says</summary>
+        <div class="msg-preview" id="msg-preview" style="margin-top:8px"></div>
+        <p class="hint" style="margin-top:6px">It's written for you from the invoice. Your name for the sign-off is on the Company tab.</p>
+      </details>
     </div>
     <div class="actions">
       <button class="btn" id="dup-inv">Copy to a new invoice</button>
@@ -623,7 +631,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <p class="hint">Anything left empty doesn't show on the invoice.</p>
     </div>
 
-    <div class="card">
+    <div class="card" id="bank-card">
       <p class="eyebrow">How customers pay you</p>
       <label class="f"><span>Account name</span><input id="bank-name" data-s="bankName" placeholder="optional"></label>
       <div class="row">
@@ -638,6 +646,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     <div class="card">
       <p class="eyebrow">Sending invoices</p>
       <label class="f"><span>Message sent with each invoice</span><textarea id="msg-template" data-s="msgTemplate" rows="3"></textarea></label>
+      <label class="f"><span>Your name, to sign off emails</span><input id="sign-name" data-s="signName" placeholder="e.g. Dave Smith"></label>
+      <p class="hint">Emails end with "Kind regards", your name, then 1 Blast and your phone and email.</p>
       <label class="f"><span>Message sent with a quote</span><textarea id="quote-template" data-s="quoteTemplate" rows="3"></textarea></label>
       <label class="f"><span>Quotes are valid for (days)</span><input id="quote-days" data-s="quoteDays" class="num" inputmode="numeric" placeholder="30"></label>
       <label class="f"><span>Message with a receipt (once it's paid)</span><textarea id="rcpt-template" data-s="rcptTemplate" rows="3"></textarea></label>
@@ -743,6 +753,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     bizRegNo: "", bizVatNo: "", bankName: "", bankSort: "", bankAcc: "", payDays: "14",
     currency: "GBP", taxRate: "0", taxLabel: "VAT",
     notes: "Thank you for your business.",
+    signName: "",
     msgTemplate: "Hi {customer}, here's invoice {number} from {business} for {total}. {due}Thanks!",
     quoteDays: "30",
     quoteTemplate: "Hi {customer}, here's your quote {number} from {business} for {total}. {valid}Let me know if you'd like to go ahead. Thanks!",
@@ -1636,6 +1647,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       var want = b.getAttribute("data-doc");
       if ((want === "quote") === isQuote(inv)) return;
       inv.docType = want;
+      inv.no = "";
       inv.no = nextNo(want);
       if (want === "quote") { inv.paid = false; inv.paidDate = ""; inv.paidMethod = ""; inv.payments = []; }
       $("inv-no").value = inv.no;
@@ -1800,11 +1812,66 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     var ph = c.replace(em ? em[0] : "", "").match(/\+?\d[\d\s-]{7,}\d/);
     return { email: em ? em[0] : "", phone: ph ? ph[0].replace(/[\s-]/g, "") : "" };
   }
-  function emailSubject() {
-    return (isQuote(inv) ? "Quote " : inv.paid ? "Receipt for invoice " : "Invoice ") + (inv.no ? "#" + inv.no + " " : "") + "from " + (eff().bizName || "us");
+  function emailSubject(kind) {
+    return (kind === "reminder" && !isQuote(inv) && !inv.paid ? "Payment reminder: invoice " : isQuote(inv) ? "Quote " : inv.paid ? "Receipt for invoice " : "Invoice ") + (inv.no ? inv.no + " " : "") + "from " + (eff().bizName || "us") +
+      (inv.job && !inv.paid ? " - " + String(inv.job).split("\n")[0].slice(0, 60) : "");
   }
+  // Bank details as short lines for WhatsApp and texts
+  function bankText() {
+    if (isQuote(inv) || inv.paid) return "";
+    var pay = payLines(eff());
+    return pay.length ? "\n\nTo pay by bank transfer:\n" + pay.join("\n") : "";
+  }
+  // A properly written email, worded for invoices, part-paid invoices, receipts, quotes and reminders.
+  // The key facts sit in a short summary so they're easy to find at a glance.
+  function emailBody(kind) {
+    var s = eff(), c = compute(), q = isQuote(inv), di = dueInfo(inv), due = dueText(), st = statusOf(inv);
+    var name = String(inv.custName || "").trim(), biz = s.bizName || "us";
+    var job = String(inv.job || "").replace(/\s*\n+\s*/g, ", ").trim();
+    var vat = num0(c.tax) ? " (including " + (s.taxLabel || "tax").trim() + ")" : "";
+    var paidAmt = paidSoFar(inv), bal = balanceOf(inv);
+    var dueLine = di.words ? "On " + di.words.replace(/^on /, "") : due;
+    var open, summary = [], after = [];
+    function line(k, v) { if (v) summary.push(k + ": " + v); }
+    if (q) {
+      open = "Thank you for your enquiry. Please find our quote attached.";
+      line("Quote", inv.no); line("Job", job); line("Total", fmtMoney(c.total) + vat);
+      line("Valid until", validIso(inv) ? fmtDate(validIso(inv)) : "");
+      after.push("If you'd like to go ahead, just reply to this email" + (s.bizPhone ? " or give me a call on " + s.bizPhone : "") + " and we'll get it booked in.");
+    } else if (inv.paid) {
+      open = "Thank you for your payment. Your receipt is attached for your records.";
+      line("Invoice", inv.no); line("Job", job); line("Amount paid", fmtMoney(c.total) + vat);
+      line("Paid on", inv.paidDate ? fmtDate(inv.paidDate) : "");
+      after.push("It was a pleasure working with you, and I hope to see you again.");
+    } else if (kind === "reminder") {
+      open = "I hope you're well. This is a friendly reminder that the invoice below " +
+        (st === "overdue" ? "is now overdue" : "is still waiting to be paid") + ". I've attached a copy for you.";
+      line("Invoice", inv.no); line("Job", job); line("Dated", fmtDate(inv.date));
+      line("Amount outstanding", fmtMoney(bal));
+      line(st === "overdue" ? "Was due" : "Due", dueLine);
+      after.push("If you've already paid, please ignore this email, and thank you.");
+    } else {
+      open = "Thank you for choosing " + biz + ". Please find your invoice attached.";
+      line("Invoice", inv.no); line("Job", job);
+      if (paidAmt > 0) { line("Total", fmtMoney(c.total) + vat); line("Paid so far", fmtMoney(paidAmt)); line("Balance due", fmtMoney(bal)); }
+      else line("Amount due", fmtMoney(c.total) + vat);
+      line("Due", dueLine);
+      after.push("If you have any questions, please don't hesitate to get in touch.");
+    }
+    var pay = q || inv.paid ? [] : payLines(s);
+    var parts = [(name ? "Dear " + name + "," : "Hello,"), open, summary.join("\n")];
+    if (pay.length) parts.push("To pay by bank transfer:\n" + pay.join("\n"));
+    parts = parts.concat(after);
+    var sign = ["Kind regards,", "", settings.signName, biz, s.bizTagline, s.bizPhone, s.bizEmail, s.bizWebsite]
+      .filter(function (x, i) { return i === 1 || x; });
+    parts.push(sign.join("\n"));
+    return parts.filter(Boolean).join("\n\n");
+  }
+  function num0(n) { return Math.abs(n) > 0.004; }
   function renderShare() {
-    setText("msg-preview", messageText());
+    setText("msg-preview", emailBody());
+    var needBank = !isQuote(inv) && !inv.paid && !payLines(eff()).length;
+    $("bank-missing").hidden = !needBank;
     setText("send-hint", "Pick Mail or Outlook for Email: the PDF and message are already in." +
       (contactBits().email ? " The customer's address is copied, so tap To and Paste." : "") +
       " Pick WhatsApp or Messages for the other two.");
@@ -1818,13 +1885,17 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   });
   $("send-msg").addEventListener("click", function () {
     flush();
-    var body = messageText() + "\n\n" + asText();
+    var body = messageText() + bankText() + "\n\n" + asText();
     if (navigator.share) {
       navigator.share({ text: body }).catch(function (e) { if (!e || e.name !== "AbortError") copyToClipboard(body, "Copied. Paste it into a message."); });
     } else copyToClipboard(body, "Copied. Paste it into a message.");
   });
 
   $("dup-inv").addEventListener("click", function () { openInvoice(invBody(), true); });
+  $("bank-fix").addEventListener("click", function () {
+    show("company");
+    setTimeout(function () { $("bank-card").scrollIntoView({ block: "start" }); $("bank-name").focus(); }, 0);
+  });
 
   // ---------- PDF ----------
   function pdfSafe(s) {
@@ -2094,6 +2165,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     }
     if (pay.length || terms) {
       pageCheck(8 + pay.length * 5 + (terms ? 6 : 0));
+      d.setFillColor(244, 246, 241); d.rect(M - 3, y - 5, R - M + 6, 8 + pay.length * 5 + (terms ? 6 : 0), "F");
       d.setFont("helvetica", "bold"); d.setFontSize(8); grey(); d.text("PAYMENT DETAILS", M, y); y += 5;
       d.setFont("helvetica", "normal"); d.setFontSize(10); ink();
       pay.forEach(function (l) { d.text(pdfSafe(l), M, y); y += 5; });
@@ -2160,7 +2232,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       toast("Getting the photos ready…");
       ensurePhotos(need).then(function () {
         var o;
-        try { o = withInvoice(doc, function () { return { blob: buildPdf(window.jspdf), name: fileBase() + ".pdf", text: messageText(kind), title: emailSubject() }; }); }
+        try { o = withInvoice(doc, function () { return { blob: buildPdf(window.jspdf), name: fileBase() + ".pdf", text: emailBody(kind), title: emailSubject(kind) }; }); }
         catch (e) { toast("Couldn't make the PDF."); return; }
         sharePdf(o);
       });
@@ -2168,7 +2240,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     }
     var out;
     try {
-      out = withInvoice(doc, function () { return { blob: buildPdf(window.jspdf), name: fileBase() + ".pdf", text: messageText(kind), title: emailSubject() }; });
+      out = withInvoice(doc, function () { return { blob: buildPdf(window.jspdf), name: fileBase() + ".pdf", text: emailBody(kind), title: emailSubject(kind) }; });
     } catch (e) { toast("Couldn't make the PDF."); return; }
     sharePdf(out);
   }
@@ -2215,7 +2287,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   function makePic() {
     picBusy = true;
     var token = picToken, b = $("send-pic");
-    var text = messageText(), name = fileBase() + ".png";
+    var text = messageText() + bankText(), name = fileBase() + ".png";
     loadH2C().then(function (h2c) {
       return h2c($("paper"), { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false });
     }).then(function (canvas) {
