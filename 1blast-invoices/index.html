@@ -545,6 +545,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <button class="btn primary" id="save-pdf">Send PDF</button>
       <button class="btn" id="send-pic">Send as picture</button>
       <button class="btn" id="send-photos" hidden>Send the job photos</button>
+      <button class="btn" id="email-html" type="button">Put it in an email</button>
+      <div class="confirm" id="email-ready" hidden>
+        <p id="email-ready-text">Copied. Tap Open email, then in the message tap and hold and choose Paste. The invoice appears in the email with your logo.</p>
+        <a class="btn primary" id="email-open" href="mailto:">Open email</a>
+      </div>
       <p class="hint">Both open your phone's share menu: WhatsApp, Messages, Mail, AirDrop, or Save to Files to keep a copy. A picture shows straight up in WhatsApp and texts without opening anything.</p>
       <div class="share-grid">
         <button class="btn" id="copy-msg">Copy message</button>
@@ -1800,7 +1805,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   function renderShare() {
     var msg = messageText(), cb = contactBits(), s = eff();
     setText("msg-preview", msg);
-    var subject = (isQuote(inv) ? "Quote " : "Invoice ") + (inv.no ? "#" + inv.no + " " : "") + "from " + (s.bizName || "us");
+    var subject = emailSubject();
     $("email-cust").hidden = !cb.email;
     if (cb.email) $("email-cust").href = "mailto:" + cb.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(msg + "\n\n" + asText());
     $("text-cust").hidden = !cb.phone;
@@ -1814,6 +1819,103 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   }
   $("copy-text").addEventListener("click", function () { copyToClipboard(asText(), "Invoice copied. Paste it into a message."); });
   $("copy-msg").addEventListener("click", function () { copyToClipboard(messageText(), "Message copied"); });
+
+  // ---------- Invoice laid out inside an email ----------
+  // Email apps only show simple tables with inline styles, and pictures that live on the web,
+  // so the logo comes from the website rather than from the phone.
+  function emailSubject() {
+    return (isQuote(inv) ? "Quote " : inv.paid ? "Receipt for invoice " : "Invoice ") + (inv.no ? "#" + inv.no + " " : "") + "from " + (eff().bizName || "us");
+  }
+  function esc(t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]; }).replace(/\n/g, "<br>");
+  }
+  function emailHtml() {
+    var s = eff(), c = compute(), q = isQuote(inv), part = !q && !inv.paid && paidSoFar(inv) > 0;
+    var F = "font-family:Arial,Helvetica,sans-serif;", INK = "#0b1638", MUTED = "#5d6670", LINE = "#dfe4dc";
+    var logoUrl = !settings.logo && location.protocol === "https:" ? new URL("logo.jpg", location.href).href : "";
+    var meta = [inv.no ? "No. " + inv.no : "", fmtDate(inv.date),
+      q ? (validIso(inv) ? "Valid until " + fmtDate(validIso(inv)) : "") : inv.paid ? (inv.paidDate ? "Paid " + fmtDate(inv.paidDate) : "PAID") : dueLabel()]
+      .filter(Boolean).map(esc).join("<br>");
+    var rows = billable().map(function (l) {
+      return '<tr><td style="' + F + 'padding:10px 0;border-bottom:1px solid ' + LINE + ';font-size:15px;color:' + INK + ';">' + esc(l.d) +
+        (l.q ? '<div style="font-size:12px;color:' + MUTED + ';margin-top:3px;">' + esc(l.q) + '</div>' : '') +
+        '</td><td align="right" style="' + F + 'padding:10px 0 10px 12px;border-bottom:1px solid ' + LINE + ';font-size:15px;color:' + INK + ';white-space:nowrap;vertical-align:top;">' + esc(fmtMoney(l.a)) + '</td></tr>';
+    }).join("");
+    function trow(k, v) {
+      return '<tr><td style="' + F + 'padding:3px 0;font-size:14px;color:' + MUTED + ';">' + esc(k) + '</td><td align="right" style="' + F + 'padding:3px 0 3px 16px;font-size:14px;color:' + INK + ';white-space:nowrap;">' + esc(v) + '</td></tr>';
+    }
+    var totals = trow("Subtotal", fmtMoney(c.sub)) + (c.rate > 0 ? trow(taxLabelText(), fmtMoney(c.tax)) : "") +
+      (part ? trow("Total", fmtMoney(c.total)) + trow("Paid so far", "-" + fmtMoney(paidSoFar(inv))) : "");
+    var grandK = part ? "Balance due" : q || inv.paid ? "Total" : "Total due", grandV = fmtMoney(part ? balanceOf(inv) : c.total);
+    var pay = payLines(s), terms = termsText(), legal = legalText(s);
+    var contact = [s.bizPhone, s.bizEmail, s.bizWebsite, s.bizAddr].filter(Boolean).map(esc).join("<br>");
+    return '<div style="' + F + 'color:' + INK + ';">' +
+      '<p style="' + F + 'font-size:15px;line-height:1.5;color:' + INK + ';margin:0 0 16px;">' + esc(messageText()) + '</p>' +
+      '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;border-collapse:collapse;border:1px solid ' + LINE + ';">' +
+      '<tr><td bgcolor="#062402" style="background:#062402;padding:18px 20px;border-bottom:4px solid #ffbb1c;">' +
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
+        '<td valign="top">' + (logoUrl ? '<img src="' + logoUrl + '" width="150" alt="' + esc(s.bizName) + '" style="display:block;width:150px;max-width:150px;height:auto;border:0;">'
+          : '<div style="' + F + 'font-size:24px;font-weight:bold;font-style:italic;color:#ffbb1c;text-transform:uppercase;">' + esc(s.bizName) + '</div>') +
+          (s.bizTagline ? '<div style="font-family:Georgia,serif;font-style:italic;font-weight:bold;font-size:14px;color:#d4a537;margin-top:6px;">' + esc(s.bizTagline) + '</div>' : '') +
+        '</td><td valign="top" align="right" style="' + F + 'color:#f4f1e6;font-size:13px;line-height:1.5;">' +
+          '<div style="' + F + 'font-size:26px;font-weight:bold;font-style:italic;letter-spacing:2px;color:#ffbb1c;margin-bottom:6px;">' + (q ? "QUOTE" : "INVOICE") + '</div>' +
+          meta + (inv.paid && !q ? '<div style="' + F + 'font-weight:bold;color:#8fdcab;margin-top:4px;">PAID</div>' : '') +
+          (contact ? '<div style="color:#cfd8c9;margin-top:10px;font-size:12px;">' + contact + '</div>' : '') +
+        '</td></tr></table>' +
+      '</td></tr>' +
+      '<tr><td style="padding:18px 20px;">' +
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>' +
+        '<td valign="top" width="50%" style="' + F + 'font-size:14px;color:' + INK + ';padding-right:10px;"><div style="font-size:11px;font-weight:bold;letter-spacing:1px;color:' + MUTED + ';">' + (q ? "QUOTE FOR" : "BILL TO") + '</div>' +
+          esc([inv.custName, inv.custContact].filter(Boolean).join("\n") || "-") + '</td>' +
+        '<td valign="top" width="50%" style="' + F + 'font-size:14px;color:' + INK + ';"><div style="font-size:11px;font-weight:bold;letter-spacing:1px;color:' + MUTED + ';">JOB</div>' + esc(inv.job || "-") + '</td>' +
+        '</tr></table>' +
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:16px;border-top:2px solid ' + INK + ';">' + rows + '</table>' +
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="right" style="margin-top:12px;">' + totals +
+          '<tr><td bgcolor="#ffbb1c" style="' + F + 'background:#ffbb1c;padding:9px 10px;font-size:16px;font-weight:bold;color:' + INK + ';text-transform:uppercase;">' + esc(grandK) + '</td>' +
+          '<td bgcolor="#ffbb1c" align="right" style="' + F + 'background:#ffbb1c;padding:9px 10px 9px 16px;font-size:16px;font-weight:bold;color:' + INK + ';white-space:nowrap;">' + esc(grandV) + '</td></tr>' +
+        '</table><div style="clear:both;"></div>' +
+        (pay.length || terms ? '<div style="' + F + 'margin-top:20px;padding-top:12px;border-top:1px solid ' + LINE + ';font-size:14px;color:' + INK + ';">' +
+          '<div style="font-size:11px;font-weight:bold;letter-spacing:1px;color:' + MUTED + ';margin-bottom:4px;">PAYMENT DETAILS</div>' +
+          pay.map(esc).join("<br>") + (terms ? '<div style="font-size:13px;color:' + MUTED + ';margin-top:6px;">' + esc(terms) + '</div>' : '') + '</div>' : '') +
+        (s.notes ? '<div style="' + F + 'margin-top:14px;font-size:13px;color:' + MUTED + ';">' + esc(s.notes) + '</div>' : '') +
+        (legal ? '<div style="' + F + 'margin-top:8px;font-size:12px;color:' + MUTED + ';">' + esc(legal) + '</div>' : '') +
+      '</td></tr></table></div>';
+  }
+  function copyRich(html, text, done) {
+    function legacy() {
+      var d = document.createElement("div");
+      d.contentEditable = "true"; d.style.position = "fixed"; d.style.left = "-9999px"; d.style.top = "0";
+      d.innerHTML = html; document.body.append(d);
+      var r = document.createRange(); r.selectNodeContents(d);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) {}
+      sel.removeAllRanges(); d.remove();
+      return ok;
+    }
+    try {
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        navigator.clipboard.write([new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([text], { type: "text/plain" })
+        })]).then(function () { done(true); }, function () { done(legacy()); });
+        return;
+      }
+    } catch (e) {}
+    done(legacy());
+  }
+  $("email-html").addEventListener("click", function () {
+    flush();
+    var cb = contactBits();
+    copyRich(emailHtml(), messageText() + "\n\n" + asText(), function (ok) {
+      if (!ok) { toast("Couldn't copy it. Use Send PDF instead."); return; }
+      $("email-open").href = "mailto:" + encodeURIComponent(cb.email || "").replace(/%40/g, "@") + "?subject=" + encodeURIComponent(emailSubject());
+      setText("email-ready-text", "Copied. Tap Open email" + (cb.email ? "" : " and put in the customer's email address") +
+        ", then in the message tap and hold and choose Paste. The " + (isQuote(inv) ? "quote" : "invoice") + " appears in the email with your logo.");
+      $("email-ready").hidden = false;
+    });
+  });
+  $("email-open").addEventListener("click", function () { setTimeout(function () { $("email-ready").hidden = true; }, 1500); });
   $("dup-inv").addEventListener("click", function () { openInvoice(invBody(), true); });
 
   // ---------- PDF ----------
