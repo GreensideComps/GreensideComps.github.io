@@ -1,6 +1,6 @@
-// Offline copy of the 1 Blast invoice app. The app page is fetched fresh when online
+// Offline copy of Time Well Billed. The app page is fetched fresh when online
 // (so updates show straight away) and served from this cache when there's no signal.
-const CACHE = "invoices-v4";
+const CACHE = "twb-v5";
 const CORE = [
   "./",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
