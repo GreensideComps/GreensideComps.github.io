@@ -175,6 +175,18 @@ input:focus, textarea:focus, select:focus, button:focus-visible {
   border: 1.5px dashed var(--accent-text); background: transparent; color: var(--ink); cursor: pointer;
   display: flex; flex-direction: column; gap: 3px;
 }
+.svc-list { display: flex; flex-direction: column; gap: 12px; }
+.svc { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--surface); }
+.svc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.svc-head .eyebrow { font-size: 14px; }
+.mini {
+  font: 600 13px/1 var(--f-body); padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--ink);
+}
+.linkbtn {
+  align-self: flex-start; background: none; border: 0; padding: 4px 0; cursor: pointer;
+  font: 600 14px/1.2 var(--f-body); color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px;
+}
 .add-grid button small { font: 400 12px/1.2 var(--f-num); color: var(--muted); }
 .empty-lines {
   text-align: center; color: var(--muted); font-size: 15px; padding: 18px 12px;
@@ -223,6 +235,7 @@ details.card > div { display: flex; flex-direction: column; gap: 12px; }
   font: 700 15px/1 var(--f-body); padding: 8px 12px; border-radius: 999px; border: 0;
   background: var(--accent); color: var(--accent-ink); cursor: pointer; margin-right: -8px;
 }
+.hint.warn { color: var(--danger); font-weight: 600; }
 .example-note {
   font-size: 13px; color: var(--muted); margin: 0; padding: 10px 12px; border-radius: 8px;
   border: 1px dashed var(--line);
@@ -363,17 +376,19 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
   <!-- EDIT -->
   <section id="view-edit" class="view" role="tabpanel" aria-labelledby="tab-edit">
+    <p class="example-note" id="paid-note" hidden>This invoice is marked as paid. Anything you change here updates your saved copy, so only change it if it was wrong.</p>
     <p class="example-note" id="example-note">This is an example invoice. Change the customer, hours or rates, add or remove charges, and it becomes a real one. Invoices save automatically.</p>
 
     <div class="card">
       <div class="card-head"><p class="eyebrow">Job</p></div>
       <div class="row">
-        <label class="f"><span>Invoice no.</span><input id="inv-no" data-i="no" inputmode="numeric"></label>
+        <label class="f"><span>Invoice no.</span><input id="inv-no" data-i="no" autocapitalize="characters"></label>
         <label class="f"><span>Date</span><input id="inv-date" data-i="date" type="date"></label>
       </div>
+      <p class="hint warn" id="no-warn" hidden></p>
       <label class="f"><span>Customer</span><input id="cust-name" data-i="custName" autocomplete="off" list="cust-list"></label>
       <datalist id="cust-list"></datalist>
-      <label class="f"><span>Customer phone / email</span><input id="cust-contact" data-i="custContact" autocomplete="off"></label>
+      <label class="f"><span>Customer phone, email or address</span><textarea id="cust-contact" data-i="custContact" rows="2" autocomplete="off"></textarea></label>
       <label class="f"><span>What was done (shown on invoice)</span><textarea id="job" data-i="job" rows="2"></textarea></label>
     </div>
 
@@ -382,13 +397,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
     <div class="card">
       <p class="eyebrow">Add a charge</p>
-      <div class="add-grid">
-        <button id="add-gen" data-add="gen">General time<small id="add-gen-sub"></small></button>
-        <button id="add-blast" data-add="blast">Sandblasting<small id="add-blast-sub"></small></button>
-        <button id="add-abt" data-add="abt">After blast treatment<small id="add-abt-sub"></small></button>
-        <button id="add-other" data-add="other">Other charge<small>your own wording</small></button>
-      </div>
-      <p class="hint">Hours can be decimals: 1.5 = 1 hr 30 min, 0.25 = 15 min. Each charge can be per hour or a fixed price.</p>
+      <div class="add-grid" id="add-grid"></div>
+      <p class="hint">Each charge can be per hour, per item ("Each", for example 4 wheels at £60 each) or one fixed price. Hours can be decimals: 1.5 = 1 hr 30 min. For a discount, use Other charge with a minus price, like -20.</p>
+      <button type="button" class="linkbtn" id="edit-services">Add, change or delete services</button>
     </div>
 
     <div class="card totals">
@@ -533,6 +544,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     <div class="card">
       <p class="eyebrow">Sending invoices</p>
       <label class="f"><span>Message sent with each invoice</span><textarea id="msg-template" data-s="msgTemplate" rows="3"></textarea></label>
+      <label class="f"><span>Message with a receipt (once it's paid)</span><textarea id="rcpt-template" data-s="rcptTemplate" rows="3"></textarea></label>
       <label class="f"><span>Reminder for unpaid invoices</span><textarea id="rem-template" data-s="remTemplate" rows="3"></textarea></label>
       <p class="hint">Words in curly brackets fill in by themselves: {customer}, {number}, {total}, {due} and {business}.</p>
     </div>
@@ -556,15 +568,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <p class="hint">Set tax to 0 if you don't charge it and the line disappears.</p>
     </div>
 
-    <div class="card">
-      <p class="eyebrow">Usual charges</p>
-      <p class="hint">Used when you tap an "Add a charge" button. You can still change them on each invoice.</p>
-      <label class="f"><span>General time wording</span><textarea id="p-gen-desc" data-p="gen.desc" rows="2"></textarea></label>
-      <label class="f"><span>General time rate per hour</span><span class="money"><span class="cur" data-cur></span><input id="p-gen-rate" data-p="gen.rate" class="num" inputmode="decimal"></span></label>
-      <label class="f"><span>Sandblasting wording</span><textarea id="p-blast-desc" data-p="blast.desc" rows="2"></textarea></label>
-      <label class="f"><span>Sandblasting rate per hour</span><span class="money"><span class="cur" data-cur></span><input id="p-blast-rate" data-p="blast.rate" class="num" inputmode="decimal"></span></label>
-      <label class="f"><span>After blast treatment wording</span><textarea id="p-abt-desc" data-p="abt.desc" rows="2"></textarea></label>
-      <label class="f"><span>After blast treatment charge</span><span class="money"><span class="cur" data-cur></span><input id="p-abt-amt" data-p="abt.amt" class="num" inputmode="decimal"></span></label>
+    <div class="card" id="services-card">
+      <p class="eyebrow">Your services</p>
+      <p class="hint">These are the buttons under "Add a charge" on the Edit tab. Add one for each kind of job, such as powder coating or a one-off job. You can still change the wording, hours and price on each invoice.</p>
+      <div class="svc-list" id="svc-list"></div>
+      <button class="btn" id="svc-add" type="button">Add a service</button>
     </div>
 
     <div class="actions"><button class="btn primary" id="company-done">Done</button></div>
@@ -576,7 +584,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <div class="stat"><div class="k">Still owed</div><div class="v" id="s-owed">0.00</div><div class="n" id="s-owed-n"></div></div>
       <div class="stat"><div class="k">Overdue</div><div class="v" id="s-overdue">0.00</div><div class="n" id="s-overdue-n"></div></div>
       <div class="stat"><div class="k">Paid this month</div><div class="v" id="s-month">0.00</div><div class="n" id="s-month-n"></div></div>
-      <div class="stat"><div class="k">All invoices</div><div class="v" id="s-count">0</div><div class="n" id="s-total-n"></div></div>
+      <div class="stat"><div class="k" id="s-year-k">Paid this tax year</div><div class="v" id="s-year">0.00</div><div class="n" id="s-year-n"></div></div>
+    </div>
+    <div class="confirm" id="backup-nag" hidden>
+      <p id="backup-nag-text"></p>
+      <button class="btn primary" id="backup-now" type="button">Make backup now</button>
     </div>
     <div class="filters" role="group" aria-label="Show invoices">
       <button type="button" data-filter="all" aria-pressed="true">All</button>
@@ -594,6 +606,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <p class="eyebrow">Records &amp; backup</p>
       <button class="btn" id="export-csv">Send list as spreadsheet</button>
       <p class="hint">Every invoice in one sheet (number, date, customer, total, paid or not). Opens in Numbers or Excel. Handy for your accountant.</p>
+      <p class="hint" id="backup-last"></p>
       <p class="hint">Invoices live on this phone. Make a backup now and then and keep it in Files, iCloud Drive or email it to yourself. You can restore it here or on a new phone.</p>
       <div class="row">
         <button class="btn" id="backup">Make backup</button>
@@ -634,19 +647,34 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     currency: "GBP", taxRate: "0", taxLabel: "VAT",
     notes: "Thank you for your business.",
     msgTemplate: "Hi {customer}, here's invoice {number} from {business} for {total}. {due}Thanks!",
+    rcptTemplate: "Hi {customer}, thanks for paying invoice {number} ({total}). Your receipt is attached. Thanks, {business}",
     remTemplate: "Hi {customer}, just a friendly reminder that invoice {number} for {total} from {business} hasn't been paid yet. {due}Thanks!",
     lastMethod: "Bank transfer",
     logo: "", logoW: 0, logoH: 0,
-    presets: {
-      gen: { desc: "Bushing pressing, paint stripping and bolt removal", rate: "40" },
-      blast: { desc: "Sandblasting", rate: "65" },
-      abt: { desc: "After blast treatment", amt: "45" }
-    }
+    services: [
+      { id: "gen", name: "General time", desc: "Bushing pressing, paint stripping and bolt removal", type: "hourly", rate: "40", hrs: "", amt: "" },
+      { id: "blast", name: "Sandblasting", desc: "Sandblasting", type: "hourly", rate: "65", hrs: "", amt: "" },
+      { id: "abt", name: "After blast treatment", desc: "After blast treatment", type: "fixed", rate: "", hrs: "", amt: "45" }
+    ]
   };
+  function sid() { return "s" + Math.random().toString(36).slice(2, 9); }
+  // Earlier versions had three fixed charges; turn whatever was typed there into services
+  function servicesFromPresets(p) {
+    var d = defaultSettings.services;
+    function get(k, f, i) { return p && p[k] && p[k][f] != null ? p[k][f] : d[i][f === "amt" ? "amt" : f]; }
+    return [
+      Object.assign({}, d[0], { desc: get("gen", "desc", 0), rate: get("gen", "rate", 0) }),
+      Object.assign({}, d[1], { desc: get("blast", "desc", 1), rate: get("blast", "rate", 1) }),
+      Object.assign({}, d[2], { desc: get("abt", "desc", 2), amt: get("abt", "amt", 2) })
+    ];
+  }
   function mergeSettings(s) {
     var out = Object.assign(clone(defaultSettings), s || {});
-    out.presets = Object.assign(clone(defaultSettings.presets), (s && s.presets) || {});
-    ["gen", "blast", "abt"].forEach(function (k) { out.presets[k] = Object.assign({}, defaultSettings.presets[k], out.presets[k]); });
+    if (!(s && Array.isArray(s.services))) out.services = s && s.presets ? servicesFromPresets(s.presets) : clone(defaultSettings.services);
+    out.services = out.services.filter(function (x) { return x && typeof x === "object"; }).map(function (x) {
+      return Object.assign({ id: sid(), name: "", desc: "", type: "hourly", rate: "", hrs: "", amt: "" }, x);
+    });
+    delete out.presets;
     return out;
   }
   // Carry over details typed into the previous version
@@ -658,17 +686,22 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   var settings = mergeSettings(lsGet(LS_SETTINGS) || fromV3(lsGet("blast-invoice.v3.settings")));
 
   function exampleInvoice() {
-    var p = settings.presets;
+    var hrs = ["2.5", "3", "1"];
     return {
       id: uid(), isExample: true, no: "0001", date: todayIso(),
       custName: "Example customer", custContact: "", job: "Front subframe and suspension arms",
-      items: [
-        { id: lid(), type: "hourly", desc: p.gen.desc, hrs: "2.5", rate: p.gen.rate, amt: "" },
-        { id: lid(), type: "hourly", desc: p.blast.desc, hrs: "3", rate: p.blast.rate, amt: "" },
-        { id: lid(), type: "fixed", desc: p.abt.desc, hrs: "", rate: "", amt: p.abt.amt }
-      ],
+      items: settings.services.slice(0, 3).map(function (sv, i) {
+        var it = itemFromService(sv);
+        if (it.type === "hourly" && !num(it.hrs)) it.hrs = hrs[i];
+        return it;
+      }),
       paid: false, snap: null
     };
+  }
+  function itemFromService(sv) {
+    return sv.type === "fixed"
+      ? { id: lid(), type: "fixed", desc: sv.desc || sv.name, hrs: "", rate: "", amt: sv.amt || "" }
+      : { id: lid(), type: sv.type === "each" ? "each" : "hourly", desc: sv.desc || sv.name, hrs: sv.hrs || "", rate: sv.rate || "", amt: "" };
   }
   function blankInvoice(no) {
     return { id: uid(), isExample: false, no: no, date: todayIso(), custName: "", custContact: "", job: "", items: [], paid: false, snap: null };
@@ -707,7 +740,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     if (isNaN(d)) return v;
     return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
   }
-  function itemAmount(it) { return it.type === "hourly" ? round2(num(it.hrs) * num(it.rate)) : round2(num(it.amt)); }
+  // hourly: hours x rate; each: quantity x price each (quantity kept in hrs); fixed: one price
+  function isQty(it) { return it.type === "hourly" || it.type === "each"; }
+  function fmtQty(n) { return String(round2(n)); }
+  function itemAmount(it) { return isQty(it) ? round2(num(it.hrs) * num(it.rate)) : round2(num(it.amt)); }
   function compute(i) {
     i = i || inv;
     var s = i.snap || settings;
@@ -720,9 +756,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     return inv.items.filter(function (it) { return itemAmount(it) !== 0; }).map(function (it) {
       return {
         d: it.desc || (it.type === "hourly" ? "Labour" : "Charge"),
-        q: it.type === "hourly" ? fmtHrs(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + "/hr" : "",
-        hrs: it.type === "hourly" ? fmtHrs(num(it.hrs)) : "",
-        rate: it.type === "hourly" ? fmtMoney(num(it.rate)) + "/hr" : "Fixed",
+        q: it.type === "hourly" ? fmtHrs(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + "/hr"
+          : it.type === "each" ? fmtQty(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + " each" : "",
+        hrs: it.type === "hourly" ? fmtHrs(num(it.hrs)) : it.type === "each" ? fmtQty(num(it.hrs)) : "",
+        rate: it.type === "hourly" ? fmtMoney(num(it.rate)) + "/hr" : it.type === "each" ? fmtMoney(num(it.rate)) + " each" : "Fixed",
         a: itemAmount(it)
       };
     });
@@ -779,10 +816,6 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       var k = el.getAttribute("data-s"), v = (SNAP_KEYS.indexOf(k) >= 0 ? s : settings)[k];
       el.value = v == null ? "" : v;
     });
-    document.querySelectorAll("[data-p]").forEach(function (el) {
-      var pr = el.getAttribute("data-p").split(".");
-      el.value = settings.presets[pr[0]][pr[1]] || "";
-    });
   }
   document.querySelectorAll("[data-i]").forEach(function (el) {
     el.addEventListener("input", function () {
@@ -796,15 +829,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       settings[k] = el.value;
       if (inv.snap && SNAP_KEYS.indexOf(k) >= 0) inv.snap[k] = el.value;
       settingsChanged();
+      if (k === "currency") { renderServices(); renderAddButtons(); }
       if (inv.isExample) { renderTotals(); renderPaper(); } else changed();
-    });
-  });
-  document.querySelectorAll("[data-p]").forEach(function (el) {
-    el.addEventListener("input", function () {
-      var pr = el.getAttribute("data-p").split(".");
-      settings.presets[pr[0]][pr[1]] = el.value;
-      settingsChanged();
-      renderAddButtons();
     });
   });
 
@@ -825,15 +851,27 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       card.className = "card";
       card.innerHTML =
         '<div class="card-head"><p class="eyebrow"></p><div class="line-tools">' +
-        '<div class="seg" role="group" aria-label="How this is charged"><button type="button" data-t="hourly">Per hour</button><button type="button" data-t="fixed">Fixed</button></div>' +
+        '<div class="seg" role="group" aria-label="How this is charged"><button type="button" data-t="hourly">Per hour</button><button type="button" data-t="each">Each</button><button type="button" data-t="fixed">Fixed</button></div>' +
         '<button type="button" class="x">Remove</button></div></div>' +
         '<label class="f"><span>Wording</span><textarea rows="2" data-f="desc"></textarea></label>' +
         (it.type === "hourly"
           ? '<div class="row"><label class="f"><span>Hours</span><input class="num" inputmode="decimal" placeholder="0" data-f="hrs"></label>' +
             '<label class="f"><span>Rate per hour</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-f="rate"></span></label></div>'
+          : it.type === "each"
+          ? '<div class="row"><label class="f"><span>How many</span><input class="num" inputmode="decimal" placeholder="0" data-f="hrs"></label>' +
+            '<label class="f"><span>Price each</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-f="rate"></span></label></div>'
           : '<label class="f"><span>Price</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-f="amt"></span></label>') +
-        '<div class="line-total"></div>';
+        '<div class="line-total"></div>' +
+        '<button type="button" class="linkbtn" data-save-svc>Save as a service for next time</button>';
       card.querySelector(".eyebrow").textContent = "Charge " + (idx + 1);
+      card.querySelector("[data-save-svc]").addEventListener("click", function () {
+        var name = String(it.desc || "").split("\n")[0].trim();
+        if (name.length > 32) name = name.slice(0, 30).trim() + "…";
+        settings.services.push({ id: sid(), name: name || "New service", desc: it.desc || "", type: it.type,
+          rate: isQty(it) ? it.rate || "" : "", hrs: isQty(it) ? it.hrs || "" : "", amt: it.type === "fixed" ? it.amt || "" : "" });
+        settingsChanged(); renderAddButtons(); renderServices();
+        toast("Saved as a service. Rename it on the Company tab.");
+      });
       card.querySelectorAll(".cur").forEach(function (c) { c.textContent = sym; });
       card.querySelectorAll("[data-t]").forEach(function (b) {
         b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === it.type));
@@ -841,6 +879,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
           var t = b.getAttribute("data-t");
           if (t === it.type) return;
           if (t === "fixed" && !num(it.amt) && itemAmount(it)) it.amt = String(itemAmount(it));
+          if (t !== "fixed" && it.type === "fixed" && !num(it.rate) && num(it.amt)) { it.rate = it.amt; if (!num(it.hrs)) it.hrs = "1"; }
           it.type = t;
           renderLines();
           changed();
@@ -874,28 +913,120 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       if (!el) return;
       el.textContent = fmtMoney(itemAmount(it));
       var s = document.createElement("small");
-      s.textContent = it.type === "hourly" ? fmtHrs(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) : "Fixed price";
+      s.textContent = it.type === "hourly" ? fmtHrs(num(it.hrs)) + " × " + fmtMoney(num(it.rate))
+        : it.type === "each" ? fmtQty(num(it.hrs)) + " × " + fmtMoney(num(it.rate)) + " each" : "Fixed price";
       el.append(s);
     });
   }
-  function renderAddButtons() {
-    var p = settings.presets;
-    $("add-gen-sub").textContent = fmtMoney(num(p.gen.rate)) + "/hr";
-    $("add-blast-sub").textContent = fmtMoney(num(p.blast.rate)) + "/hr";
-    $("add-abt-sub").textContent = fmtMoney(num(p.abt.amt)) + " fixed";
+  function serviceSub(sv) {
+    if (sv.type === "fixed") return fmtMoney(num(sv.amt)) + " fixed";
+    if (sv.type === "each") return fmtMoney(num(sv.rate)) + " each" + (num(sv.hrs) ? " · " + fmtQty(num(sv.hrs)) : "");
+    return fmtMoney(num(sv.rate)) + "/hr" + (num(sv.hrs) ? " · " + fmtHrs(num(sv.hrs)) : "");
   }
-  document.querySelectorAll("[data-add]").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var k = b.getAttribute("data-add"), p = settings.presets, it;
-      if (k === "gen" || k === "blast") it = { id: lid(), type: "hourly", desc: p[k].desc, hrs: "", rate: p[k].rate, amt: "" };
-      else if (k === "abt") it = { id: lid(), type: "fixed", desc: p.abt.desc, hrs: "", rate: "", amt: p.abt.amt };
-      else it = { id: lid(), type: "fixed", desc: "", hrs: "", rate: "", amt: "" };
-      inv.items.push(it);
-      renderLines();
-      changed();
-      var focusEl = $(it.id + "-" + (k === "other" ? "desc" : it.type === "hourly" ? "hrs" : "amt"));
-      if (focusEl) { focusEl.scrollIntoView({ block: "center" }); focusEl.focus(); }
+  function addCharge(it, focusField) {
+    inv.items.push(it);
+    renderLines();
+    changed();
+    var focusEl = $(it.id + "-" + focusField);
+    if (focusEl) { focusEl.scrollIntoView({ block: "center" }); focusEl.focus(); }
+  }
+  function renderAddButtons() {
+    var grid = $("add-grid");
+    grid.innerHTML = "";
+    settings.services.forEach(function (sv) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = sv.name || sv.desc || "Service";
+      var sm = document.createElement("small"); sm.textContent = serviceSub(sv); b.append(sm);
+      b.addEventListener("click", function () {
+        var it = itemFromService(sv);
+        addCharge(it, isQty(it) ? (num(it.hrs) ? "desc" : "hrs") : "amt");
+      });
+      grid.append(b);
     });
+    var o = document.createElement("button");
+    o.type = "button"; o.textContent = "Other charge";
+    var osm = document.createElement("small"); osm.textContent = "your own wording"; o.append(osm);
+    o.addEventListener("click", function () { addCharge({ id: lid(), type: "fixed", desc: "", hrs: "", rate: "", amt: "" }, "desc"); });
+    grid.append(o);
+  }
+
+  function renderServices() {
+    var box = $("svc-list"), sym = curSymbol();
+    box.innerHTML = "";
+    if (!settings.services.length) {
+      var e = document.createElement("div");
+      e.className = "empty-lines";
+      e.textContent = "No services yet. Tap Add a service to make your first one.";
+      box.append(e);
+    }
+    settings.services.forEach(function (sv, i) {
+      var c = document.createElement("div");
+      c.className = "svc";
+      c.innerHTML =
+        '<div class="svc-head"><p class="eyebrow"></p><div class="line-tools">' +
+        '<button type="button" class="mini" data-up>Move up</button><button type="button" class="x" data-del>Delete</button></div></div>' +
+        '<label class="f"><span>Name (the button)</span><input data-k="name" placeholder="e.g. Powder coating"></label>' +
+        '<label class="f"><span>Wording on the invoice</span><textarea rows="2" data-k="desc" placeholder="What the customer sees"></textarea></label>' +
+        '<div class="seg" role="group" aria-label="How this is charged"><button type="button" data-t="hourly">Per hour</button><button type="button" data-t="each">Each</button><button type="button" data-t="fixed">Fixed price</button></div>' +
+        (sv.type === "fixed"
+          ? '<label class="f"><span>Price</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-k="amt"></span></label>'
+          : sv.type === "each"
+          ? '<div class="row"><label class="f"><span>Price each</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-k="rate"></span></label>' +
+            '<label class="f"><span>Usual number</span><input class="num" inputmode="decimal" placeholder="optional" data-k="hrs"></label></div>'
+          : '<div class="row"><label class="f"><span>Rate per hour</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-k="rate"></span></label>' +
+            '<label class="f"><span>Usual hours</span><input class="num" inputmode="decimal" placeholder="optional" data-k="hrs"></label></div>');
+      c.querySelector(".eyebrow").textContent = sv.name || "Service " + (i + 1);
+      c.querySelectorAll(".cur").forEach(function (x) { x.textContent = sym; });
+      c.querySelector("[data-up]").hidden = i === 0;
+      c.querySelectorAll("[data-k]").forEach(function (inp) {
+        var k = inp.getAttribute("data-k");
+        inp.id = sv.id + "-svc-" + k;
+        inp.value = sv[k] || "";
+        inp.addEventListener("input", function () {
+          sv[k] = inp.value;
+          if (k === "name") c.querySelector(".eyebrow").textContent = inp.value || "Service " + (i + 1);
+          settingsChanged(); renderAddButtons();
+        });
+      });
+      c.querySelectorAll("[data-t]").forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === sv.type));
+        b.addEventListener("click", function () {
+          var t = b.getAttribute("data-t");
+          if (t === sv.type) return;
+          if (t === "fixed" && !num(sv.amt) && num(sv.rate) && num(sv.hrs)) sv.amt = String(round2(num(sv.rate) * num(sv.hrs)));
+          if (t !== "fixed" && sv.type === "fixed" && !num(sv.rate) && num(sv.amt)) sv.rate = sv.amt;
+          sv.type = t;
+          settingsChanged(); renderServices(); renderAddButtons();
+        });
+      });
+      c.querySelector("[data-up]").addEventListener("click", function () {
+        var at = settings.services.indexOf(sv);
+        if (at > 0) { settings.services.splice(at, 1); settings.services.splice(at - 1, 0, sv); }
+        settingsChanged(); renderServices(); renderAddButtons();
+      });
+      c.querySelector("[data-del]").addEventListener("click", function () {
+        var at = settings.services.indexOf(sv);
+        settings.services.splice(at, 1);
+        settingsChanged(); renderServices(); renderAddButtons();
+        toast((sv.name || "Service") + " deleted", "Undo", function () {
+          settings.services.splice(Math.min(at, settings.services.length), 0, sv);
+          settingsChanged(); renderServices(); renderAddButtons();
+        });
+      });
+      box.append(c);
+    });
+  }
+  $("svc-add").addEventListener("click", function () {
+    var sv = { id: sid(), name: "", desc: "", type: "hourly", rate: "", hrs: "", amt: "" };
+    settings.services.push(sv);
+    settingsChanged(); renderServices(); renderAddButtons();
+    var el = $(sv.id + "-svc-name");
+    if (el) { el.scrollIntoView({ block: "center" }); el.focus(); }
+  });
+  $("edit-services").addEventListener("click", function () {
+    show("company");
+    setTimeout(function () { $("services-card").scrollIntoView({ block: "start" }); }, 0);
   });
 
   // ---------- Render ----------
@@ -912,6 +1043,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     setText("hdr-total", fmtMoney(c.total));
     setText("hdr-name", inv.no ? "Invoice #" + inv.no : "Invoice");
     $("example-note").hidden = !inv.isExample;
+    $("paid-note").hidden = !inv.paid;
+    var taken = noTaken(inv.no);
+    $("no-warn").hidden = !taken;
+    if (taken) setText("no-warn", "Invoice number " + inv.no + " is already used by another invoice. The next free one is " + nextNo() + ".");
   }
   function renderPaper() {
     var s = eff(), c = compute();
@@ -959,6 +1094,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     $("p-foot").hidden = !(pay.length || terms || s.notes || legal);
     renderShare();
     renderPayCard();
+    $("save-pdf").textContent = inv.paid ? "Send receipt (PDF)" : "Send PDF";
   }
   function renderStatus() {
     var el = $("hdr-status");
@@ -971,7 +1107,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     el.textContent = inv.paid ? "Saved · Paid" : statusOf(inv) === "overdue" ? "Saved · Overdue" : "Saved";
   }
   function renderAll() {
-    fillForms(); renderLogo(); renderLines(); renderAddButtons(); renderTotals(); renderPaper(); renderStatus(); renderSaved();
+    fillForms(); renderLogo(); renderLines(); renderAddButtons(); renderServices(); renderTotals(); renderPaper(); renderStatus(); renderSaved();
   }
 
   // ---------- Saving ----------
@@ -1071,12 +1207,18 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   }
   function nextNo() {
     var nums = sortedSaved().map(function (s) { return s.no; }).concat(inv.isExample ? [] : [inv.no]);
-    var max = 0, width = 4;
+    var best = null;
     nums.forEach(function (n) {
-      var v = parseInt(n, 10);
-      if (isFinite(v) && v > max) { max = v; width = Math.max(4, String(n).length); }
+      var m = String(n || "").trim().match(/^(.*?)(\d+)$/);
+      if (!m) return;
+      var v = parseInt(m[2], 10);
+      if (!best || v > best.v) best = { v: v, pre: m[1], w: m[2].length };
     });
-    return String(max + 1).padStart(width, "0");
+    return best ? best.pre + String(best.v + 1).padStart(best.w, "0") : "0001";
+  }
+  function noTaken(no) {
+    no = String(no || "").trim();
+    return !!no && sortedSaved().some(function (x) { return x.id !== inv.id && String(x.no || "").trim() === no; });
   }
   function renderSaved() {
     $("store-note").textContent = "Saved on this phone. Keep the app on your home screen and make a backup now and then (bottom of this page).";
@@ -1091,7 +1233,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     setText("s-overdue", fmtMoney(sum(overdue), settings.currency)); setText("s-overdue-n", count(overdue.length));
     $("s-overdue").classList.toggle("warn", overdue.length > 0);
     setText("s-month", fmtMoney(sum(paidMonth), settings.currency)); setText("s-month-n", count(paidMonth.length));
-    setText("s-count", String(all.length)); setText("s-total-n", fmtMoney(sum(all), settings.currency) + " billed");
+    var t = todayIso(), y = parseInt(t.slice(0, 4), 10), ty = t >= y + "-04-06" ? y : y - 1, tyStart = ty + "-04-06";
+    var paidYear = all.filter(function (x) { return x.paid && String(x.paidDate || "") >= tyStart; });
+    setText("s-year", fmtMoney(sum(paidYear), settings.currency));
+    setText("s-year-n", ty + "/" + String(ty + 1).slice(2) + " (from 6 April) · " + all.length + " invoices in all");
+    renderBackupNag(all.length);
     renderCustomers(all);
 
     var q = savedQuery.trim().toLowerCase();
@@ -1204,11 +1350,15 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     toast("Marked as unpaid", "Undo", function () { setPaid(id, true, before.method, before.date); });
   });
   async function deleteInvoice(s) {
+    var copy = clone(s), wasOpen = s.id === inv.id;
     try {
       delete savedLocal[s.id]; lsSet(LS_SAVED, savedLocal);
-      if (s.id === inv.id) { inv = blankInvoice(nextNo()); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); renderAll(); }
+      if (wasOpen) { inv = blankInvoice(nextNo()); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); renderAll(); }
       else renderSaved();
-      toast("Invoice #" + (s.no || "") + " deleted");
+      toast("Invoice #" + (s.no || "") + " deleted", "Undo", function () {
+        savedLocal[copy.id] = copy; lsSet(LS_SAVED, savedLocal);
+        if (wasOpen && !worthSaving()) openInvoice(copy, false); else renderSaved();
+      });
     } catch (e) { toast("Couldn't delete that invoice."); }
   }
   async function openInvoice(s, asCopy) {
@@ -1325,7 +1475,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   }
   function messageText(kind) {
     var s = eff(), c = compute(), due = dueText(s), late = statusOf(inv) === "overdue";
-    var tpl = kind === "reminder" ? settings.remTemplate : settings.msgTemplate;
+    var tpl = kind === "reminder" ? settings.remTemplate : inv.paid ? settings.rcptTemplate : settings.msgTemplate;
     var dueWords = due && !inv.paid ? (kind === "reminder" ? (late ? "It was due on " : "It's due by ") : "Payment is due by ") + due + ". " : "";
     return (tpl || "")
       .replace(/\{customer\}/g, String(inv.custName || "").trim() || "there")
@@ -1444,7 +1594,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     var X_QTY = 128, X_RATE = 160;
     d.setFillColor(242, 244, 239); d.rect(M, y - 5, R - M, 8, "F");
     d.setFont("helvetica", "bold"); d.setFontSize(8); grey();
-    d.text("DESCRIPTION", M + 2, y); d.text("HOURS", X_QTY, y, { align: "right" });
+    d.text("DESCRIPTION", M + 2, y); d.text("QTY / HOURS", X_QTY, y, { align: "right" });
     d.text("RATE", X_RATE, y, { align: "right" }); d.text("AMOUNT", R - 2, y, { align: "right" });
     y += 9;
 
@@ -1613,12 +1763,26 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   });
 
   // ---------- Backup ----------
-  $("backup").addEventListener("click", function () {
+  function makeBackup() {
     flush();
     var data = { app: "blast-invoice", version: 2, exportedAt: new Date().toISOString(), settings: settings, invoices: savedLocal };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    shareOrDownload(blob, "Invoices backup " + todayIso() + ".json", "application/json");
-  });
+    shareOrDownload(blob, "Invoices backup " + todayIso() + ".json", "application/json").then(function (r) {
+      if (r === "cancelled") return;
+      settings.lastBackup = todayIso(); settingsChanged(); renderSaved();
+    });
+  }
+  function renderBackupNag(count) {
+    var last = settings.lastBackup, days = last ? Math.round((new Date(todayIso() + "T12:00:00") - new Date(last + "T12:00:00")) / 864e5) : null;
+    setText("backup-last", last ? "Last backup: " + fmtDate(last) + "." : "No backup made yet.");
+    var nag = count > 0 && (days === null || days > 30);
+    $("backup-nag").hidden = !nag;
+    if (nag) setText("backup-nag-text", days === null
+      ? "You haven't made a backup yet. If this phone is lost or reset, your invoices go with it."
+      : "Your last backup was " + days + " days ago. Make a fresh one so new invoices are safe too.");
+  }
+  $("backup").addEventListener("click", makeBackup);
+  $("backup-now").addEventListener("click", makeBackup);
   $("restore").addEventListener("click", function () { $("restore-file").click(); });
   $("restore-file").addEventListener("change", function () {
     var f = this.files && this.files[0];
@@ -1648,6 +1812,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
   if (savedLocal[inv.id]) lastSavedJson = stable(stripForCompare(savedLocal[inv.id]));
   renderAll();
+  // Keep a copy of the app and its PDF and picture makers so it opens with no signal
+  try {
+    if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
+  } catch (e) {}
   // Ask Safari to keep this app's storage (not guaranteed, harmless if refused)
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
   window.addEventListener("pagehide", function () { flush(); });
