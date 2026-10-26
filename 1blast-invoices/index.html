@@ -378,6 +378,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 <header class="top"><div class="top-in">
@@ -567,6 +568,29 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   <!-- COMPANY -->
   <section id="view-company" class="view" role="tabpanel" aria-labelledby="tab-company" hidden>
     <p class="store-note">Change anything here whenever you like. It saves on this phone straight away and shows on the invoice you're working on and every new one. Invoices saved earlier keep the details they had.</p>
+
+    <div class="card" id="cloud-card">
+      <div class="card-head"><p class="eyebrow">Online saving</p><span class="chip" id="cloud-chip"></span></div>
+      <p class="hint" id="cloud-unavail" hidden>Online saving needs internet the first time. Open the app again when you have signal.</p>
+      <div class="pay-part" id="cloud-out">
+        <p class="hint">Sign in to keep every invoice, quote, photo and setting saved online as well as on this phone. Sign in with the same email and password on another phone or an iPad and everything shows up there too.</p>
+        <label class="f"><span>Email</span><input id="cloud-email" type="email" autocomplete="username" autocapitalize="off" inputmode="email"></label>
+        <label class="f"><span>Password (at least 8 characters)</span><input id="cloud-pass" type="password" autocomplete="current-password"></label>
+        <div class="row">
+          <button class="btn primary" id="cloud-signin" type="button">Sign in</button>
+          <button class="btn" id="cloud-signup" type="button">Create account</button>
+        </div>
+        <p class="hint warn" id="cloud-err" hidden></p>
+        <p class="hint">First time? Put in your email, choose a password and tap Create account. After that, just Sign in.</p>
+      </div>
+      <div class="pay-part" id="cloud-in" hidden>
+        <p class="paid-line" id="cloud-line"></p>
+        <div class="row">
+          <button class="btn" id="cloud-sync" type="button">Sync now</button>
+          <button class="btn" id="cloud-signout" type="button">Sign out</button>
+        </div>
+      </div>
+    </div>
 
     <div class="card">
       <p class="eyebrow">Logo</p>
@@ -915,9 +939,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   // ---------- Forms ----------
   function fillForms() {
     document.querySelectorAll("[data-i]").forEach(function (el) { el.value = inv[el.getAttribute("data-i")] || ""; });
-    var s = eff();
     document.querySelectorAll("[data-s]").forEach(function (el) {
-      var k = el.getAttribute("data-s"), v = (SNAP_KEYS.indexOf(k) >= 0 ? s : settings)[k];
+      var k = el.getAttribute("data-s"), v = settings[k];
       el.value = v == null ? "" : v;
     });
   }
@@ -1286,6 +1309,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
   async function putInvoice(body) {
     savedLocal[body.id] = body;
+    markDirty(body.id);
     localStorage.setItem(LS_SAVED, JSON.stringify(savedLocal));
     renderSaved();
   }
@@ -1308,7 +1332,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     if (again) { again = false; flush(); }
   }
 
-  function settingsChanged() { lsSet(LS_SETTINGS, settings); }
+  function settingsChanged() { settings.updatedAt = Date.now(); lsSet(LS_SETTINGS, settings); markSettingsDirty(); }
 
   // ---------- Saved list ----------
   var savedFilter = "all", savedQuery = "";
@@ -1364,7 +1388,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     return !!no && sortedSaved().some(function (x) { return x.id !== inv.id && isQuote(x) === isQuote(inv) && String(x.no || "").trim() === no; });
   }
   function renderSaved() {
-    $("store-note").textContent = "Saved on this phone. Keep the app on your home screen and make a backup now and then (bottom of this page).";
+    $("store-note").textContent = cloudUser
+      ? "Saved on this phone and online" + (cloud.lastSync ? " (last synced " + ago(cloud.lastSync) + ")" : "") + "."
+      : "Saved on this phone only. Turn on online saving on the Company tab, or make a backup now and then (bottom of this page).";
 
     var all = sortedSaved(), invs = all.filter(function (x) { return !isQuote(x); });
     function owedSum(arr) { return round2(arr.reduce(function (t, x) { return t + balanceOf(x); }, 0)); }
@@ -1471,6 +1497,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       fn(savedLocal[id]);
       savedLocal[id].updatedAt = Date.now();
       try { localStorage.setItem(LS_SAVED, JSON.stringify(savedLocal)); } catch (e) { toast("Couldn't update that invoice."); }
+      markDirty(id);
     }
     if (id === inv.id) { fn(inv); changed(); }
     renderSaved();
@@ -1592,7 +1619,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     next.fromQuote = quote.no;
     next.items.forEach(function (it) { it.id = lid(); });
     next.no = ""; inv = next; next.no = nextNo("invoice"); inv = keep;
-    if (savedLocal[qid]) { savedLocal[qid].quoteStatus = "accepted"; savedLocal[qid].convertedTo = next.no; savedLocal[qid].updatedAt = Date.now(); lsSet(LS_SAVED, savedLocal); }
+    if (savedLocal[qid]) { savedLocal[qid].quoteStatus = "accepted"; savedLocal[qid].convertedTo = next.no; savedLocal[qid].updatedAt = Date.now(); lsSet(LS_SAVED, savedLocal); markDirty(qid); }
     inv = next; inv.isExample = false; lastSavedJson = null;
     lsSet(LS_DRAFT, draftBody());
     renderAll(); show("edit");
@@ -1617,11 +1644,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   async function deleteInvoice(s) {
     var copy = clone(s), wasOpen = s.id === inv.id;
     try {
-      delete savedLocal[s.id]; lsSet(LS_SAVED, savedLocal);
+      delete savedLocal[s.id]; lsSet(LS_SAVED, savedLocal); markDeleted(s.id);
       if (wasOpen) { inv = blankInvoice(nextNo("invoice")); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); renderAll(); }
       else renderSaved();
       toast("Invoice #" + (s.no || "") + " deleted", "Undo", function () {
-        savedLocal[copy.id] = copy; lsSet(LS_SAVED, savedLocal);
+        copy.updatedAt = Date.now(); savedLocal[copy.id] = copy; lsSet(LS_SAVED, savedLocal); markDirty(copy.id);
         if (wasOpen && !worthSaving()) openInvoice(copy, false); else renderSaved();
       });
     } catch (e) { toast("Couldn't delete that invoice."); }
@@ -1818,7 +1845,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       URL.revokeObjectURL(url);
       var prev = [settings.logo, settings.logoW, settings.logoH];
       settings.logo = cv.toDataURL("image/jpeg", 0.88); settings.logoW = w; settings.logoH = h;
-      try { localStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); toast("Logo updated"); }
+      try { settings.updatedAt = Date.now(); localStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); markSettingsDirty(); toast("Logo updated"); }
       catch (e) { settings.logo = prev[0]; settings.logoW = prev[1]; settings.logoH = prev[2]; toast("Couldn't store that picture. Try a smaller one."); }
       renderLogo();
     };
@@ -1858,7 +1885,13 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     ids = ids.filter(function (id) { return !(id in photoCache); });
     if (!ids.length) return Promise.resolve();
     return Promise.all(ids.map(function (id) {
-      return photoGet(id).then(function (v) { photoCache[id] = v || null; }, function () { photoCache[id] = null; });
+      return photoGet(id).then(function (v) {
+        if (v || !sb || !cloudUser) { photoCache[id] = v || null; return; }
+        return cloudPhoto(id).then(function (d) {
+          photoCache[id] = d || null;
+          if (d) { photoPut(id, d).catch(function () {}); cloud.uploaded[id] = 1; cloudSave(); }
+        });
+      }, function () { photoCache[id] = null; });
     }));
   }
   function usedPhotoIds() {
@@ -2229,7 +2262,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   function renderBackupNag(count) {
     var last = settings.lastBackup, days = last ? Math.round((new Date(todayIso() + "T12:00:00") - new Date(last + "T12:00:00")) / 864e5) : null;
     setText("backup-last", last ? "Last backup: " + fmtDate(last) + "." : "No backup made yet.");
-    var nag = count > 0 && (days === null || days > 30);
+    var nag = count > 0 && (days === null || days > 30) && !(cloudUser && cloud.lastSync && Date.now() - cloud.lastSync < 7 * 864e5);
     $("backup-nag").hidden = !nag;
     if (nag) setText("backup-nag-text", days === null
       ? "You haven't made a backup yet. If this phone is lost or reset, your invoices go with it."
@@ -2251,9 +2284,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         Object.keys(data.invoices).forEach(function (k) {
           var b = data.invoices[k];
           if (!b || !b.id || !Array.isArray(b.items)) return;
-          if (!savedLocal[k] || (b.updatedAt || 0) > (savedLocal[k].updatedAt || 0)) { savedLocal[k] = b; added++; }
+          if (!savedLocal[k] || (b.updatedAt || 0) > (savedLocal[k].updatedAt || 0)) { savedLocal[k] = b; added++; markDirty(k); }
         });
-        if (data.settings) { settings = mergeSettings(data.settings); lsSet(LS_SETTINGS, settings); }
+        if (data.settings) { settings = mergeSettings(data.settings); settingsChanged(); }
         lsSet(LS_SAVED, savedLocal);
         var photos = data.photos && typeof data.photos === "object" ? data.photos : {};
         Promise.all(Object.keys(photos).map(function (id) {
@@ -2265,6 +2298,219 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     };
     r.readAsText(f);
   });
+
+  // ---------- Online saving (Supabase) ----------
+  // The phone stays the working copy; changes are queued and sent up, and other devices' changes come down.
+  var SB_URL = "https://pafvrzfbcyphmnnevrwi.supabase.co";
+  var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhZnZyemZiY3lwaG1ubmV2cndpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5OTY4OTEsImV4cCI6MjEwODU3Mjg5MX0.iz85bOZ8tFsrIcq1E2rnIfWaDiXp3Pucj1g-gtMHzc4";
+  var LS_CLOUD = "blast-invoice.cloud";
+  var sb = null, cloudUser = null, cloudState = "", cloudErr = "", syncing = false, syncAgain = false, syncTimer = null;
+  var cloud = lsGet(LS_CLOUD) || {};
+  function fixCloud() {
+    cloud.dirty = cloud.dirty && typeof cloud.dirty === "object" ? cloud.dirty : {};
+    cloud.uploaded = cloud.uploaded && typeof cloud.uploaded === "object" ? cloud.uploaded : {};
+  }
+  fixCloud();
+  function cloudSave() { lsSet(LS_CLOUD, cloud); }
+  function scheduleSync(ms) { if (!cloudUser) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms || 2500); }
+  function markDirty(id) { cloud.dirty[id] = 1; cloudSave(); scheduleSync(); }
+  function markDeleted(id) { cloud.dirty[id] = Date.now(); cloudSave(); scheduleSync(); }
+  function markSettingsDirty() { cloud.settingsDirty = true; cloudSave(); scheduleSync(); }
+  function ago(ms) {
+    var m = Math.round((Date.now() - ms) / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return m + " min ago";
+    if (m < 1440) return Math.round(m / 60) + " hr ago";
+    return new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  }
+  function blobToDataUrl(b) {
+    return new Promise(function (res) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = function () { res(null); }; r.readAsDataURL(b); });
+  }
+  function cloudPhoto(id) {
+    return sb.storage.from("photos").download(cloudUser.id + "/" + id + ".jpg").then(function (r) {
+      return r.error || !r.data ? null : blobToDataUrl(r.data);
+    }).catch(function () { return null; });
+  }
+  function photoIdsOf(ids) {
+    var out = {};
+    ids.forEach(function (id) { var d = savedLocal[id]; (d && d.photos || []).forEach(function (ph) { out[ph.id] = 1; }); });
+    return Object.keys(out);
+  }
+  function openDocFrom(doc) {
+    inv = clone(doc);
+    delete inv.kind; delete inv.total; delete inv.subtotal;
+    inv.isExample = false;
+    lastSavedJson = stable(stripForCompare(doc));
+    lsSet(LS_DRAFT, draftBody());
+  }
+  async function syncNow(manual) {
+    if (!sb || !cloudUser) return;
+    if (!navigator.onLine) { if (manual) toast("No internet right now. It'll sync when you're back online."); return; }
+    if (syncing) { syncAgain = true; return; }
+    syncing = true; cloudState = "syncing"; renderCloud();
+    var uid = cloudUser.id, changedLocal = false;
+    try {
+      await flush();
+      // 1. Bring down anything changed on another device
+      var q = sb.from("invoices").select("id, doc, deleted, updated_at").order("updated_at", { ascending: true });
+      if (cloud.lastPull) q = q.gt("updated_at", cloud.lastPull);
+      var res = await q;
+      if (res.error) throw res.error;
+      var maxTs = cloud.lastPull || "";
+      (res.data || []).forEach(function (row) {
+        if (row.updated_at > maxTs) maxTs = row.updated_at;
+        var local = savedLocal[row.id], rdoc = row.doc || {};
+        var rTime = rdoc.updatedAt || 0, lTime = local ? local.updatedAt || 0 : 0;
+        if (row.deleted) {
+          if (local && rTime >= lTime) {
+            delete savedLocal[row.id]; delete cloud.dirty[row.id]; changedLocal = true;
+            if (row.id === inv.id && !isDirty()) { inv = blankInvoice(nextNo("invoice")); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); }
+          }
+          return;
+        }
+        if (!Array.isArray(rdoc.items)) return;   // not something this app saved
+        if (!local || rTime > lTime) {
+          savedLocal[row.id] = rdoc; delete cloud.dirty[row.id]; changedLocal = true;
+          if (row.id === inv.id && !isDirty()) openDocFrom(rdoc);
+        }
+      });
+      if (maxTs) cloud.lastPull = maxTs;
+      if (changedLocal) lsSet(LS_SAVED, savedLocal);
+      var sres = await sb.from("app_settings").select("settings").maybeSingle();
+      if (sres.error) throw sres.error;
+      if (sres.data && sres.data.settings && (!settings.updatedAt || (sres.data.settings.updatedAt || 0) > settings.updatedAt)) {
+        settings = mergeSettings(sres.data.settings); lsSet(LS_SETTINGS, settings); cloud.settingsDirty = false; changedLocal = true;
+      } else if (!sres.data) cloud.settingsDirty = true;
+      // 2. Send up photos for invoices about to be sent
+      var dirtyIds = Object.keys(cloud.dirty);
+      var needUp = photoIdsOf(dirtyIds).filter(function (id) { return !cloud.uploaded[id]; });
+      if (needUp.length) await ensurePhotos(needUp);
+      for (var i = 0; i < needUp.length; i++) {
+        var pid = needUp[i];
+        if (!photoCache[pid]) continue;
+        var up = await sb.storage.from("photos").upload(uid + "/" + pid + ".jpg", dataUrlToBlob(photoCache[pid]), { upsert: true, contentType: "image/jpeg" });
+        if (!up.error) cloud.uploaded[pid] = 1;
+      }
+      // 3. Send up changed and deleted invoices
+      if (dirtyIds.length) {
+        var rows = dirtyIds.map(function (id) {
+          return savedLocal[id] ? { user_id: uid, id: id, doc: savedLocal[id], deleted: false }
+            : { user_id: uid, id: id, doc: { id: id, updatedAt: cloud.dirty[id] > 1 ? cloud.dirty[id] : Date.now() }, deleted: true };
+        });
+        var pres = await sb.from("invoices").upsert(rows, { onConflict: "user_id,id" });
+        if (pres.error) throw pres.error;
+        dirtyIds.forEach(function (id) { delete cloud.dirty[id]; });
+      }
+      // 4. Settings
+      if (cloud.settingsDirty) {
+        var set = await sb.from("app_settings").upsert({ user_id: uid, settings: settings }, { onConflict: "user_id" });
+        if (set.error) throw set.error;
+        cloud.settingsDirty = false;
+      }
+      cloud.lastSync = Date.now(); cloudState = "ok"; cloudErr = "";
+    } catch (e) {
+      cloudState = "error";
+      cloudErr = navigator.onLine ? "Couldn't sync just now. It'll try again shortly." : "No internet. It'll sync when you're back online.";
+      clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 60000);
+    }
+    cloudSave();
+    syncing = false;
+    if (changedLocal) {
+      Object.keys(photoCache).forEach(function (k) { if (photoCache[k] === null) delete photoCache[k]; });
+      gridSig = paperSig = "";
+      renderAll();
+    } else renderSaved();
+    renderCloud();
+    if (manual && cloudState === "ok") toast("All synced");
+    if (syncAgain) { syncAgain = false; scheduleSync(500); }
+  }
+  function signedIn(user) {
+    cloudUser = user;
+    if (cloud.userId !== user.id) {
+      // First time this account is used on this phone: send everything already here
+      cloud = { userId: user.id, dirty: {}, uploaded: {}, settingsDirty: true, lastPull: null, lastSync: 0 };
+      Object.keys(savedLocal).forEach(function (id) { cloud.dirty[id] = 1; });
+      cloudSave();
+    }
+    renderCloud(); renderSaved();
+    syncNow();
+  }
+  function cloudError(msg) { var el = $("cloud-err"); el.textContent = msg; el.hidden = !msg; }
+  function cloudBusy(on) { $("cloud-signin").disabled = on; $("cloud-signup").disabled = on; }
+  function renderCloud() {
+    var chip = $("cloud-chip");
+    $("cloud-unavail").hidden = !!sb;
+    $("cloud-out").hidden = !sb || !!cloudUser;
+    $("cloud-in").hidden = !cloudUser;
+    if (!cloudUser) { chip.className = "chip declined"; chip.textContent = "Off"; return; }
+    chip.className = "chip " + (cloudState === "error" ? "overdue" : "paid");
+    chip.textContent = cloudState === "syncing" ? "Syncing…" : cloudState === "error" ? "Not synced" : "On";
+    setText("cloud-line", "Signed in as " + cloudUser.email + ". " + (cloudState === "error" ? cloudErr
+      : cloud.lastSync ? "Last synced " + ago(cloud.lastSync) + "." : "Syncing for the first time…"));
+  }
+  function initCloud() {
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "blast-invoice-auth" } });
+      }
+    } catch (e) { sb = null; }
+    renderCloud();
+    if (!sb) return;
+    sb.auth.getSession().then(function (r) {
+      var u = r.data && r.data.session ? r.data.session.user : null;
+      if (u) signedIn(u);
+    });
+    sb.auth.onAuthStateChange(function (ev, session) {
+      if (ev === "SIGNED_OUT") { cloudUser = null; renderCloud(); renderSaved(); }
+    });
+  }
+  $("cloud-signin").addEventListener("click", async function () {
+    var em = $("cloud-email").value.trim(), pw = $("cloud-pass").value;
+    if (!em || !pw) { cloudError("Put in your email and password."); return; }
+    cloudError(""); cloudBusy(true);
+    var r = await sb.auth.signInWithPassword({ email: em, password: pw });
+    cloudBusy(false);
+    if (r.error) {
+      cloudError(/invalid/i.test(r.error.message || "") ? "That email and password don't match. Check them, or tap Create account if you haven't made one yet."
+        : "Couldn't sign in. Check your internet and try again.");
+      return;
+    }
+    $("cloud-pass").value = "";
+    signedIn(r.data.user);
+    toast("Signed in. Saving your invoices online…");
+  });
+  $("cloud-signup").addEventListener("click", async function () {
+    var em = $("cloud-email").value.trim(), pw = $("cloud-pass").value;
+    if (!em || !pw) { cloudError("Put in your email and choose a password."); return; }
+    if (pw.length < 8) { cloudError("Make the password at least 8 characters."); return; }
+    cloudError(""); cloudBusy(true);
+    var r = await sb.functions.invoke("create-account", { body: { email: em, password: pw } });
+    if (r.error) {
+      var code = "";
+      try { code = (await r.error.context.json()).error; } catch (e) {}
+      cloudBusy(false);
+      cloudError(code === "not_allowed" ? "This email can't make an account here. Ask whoever set up the app to add it."
+        : code === "exists" ? "There's already an account for this email. Tap Sign in instead."
+        : code === "weak_password" ? "Make the password at least 8 characters."
+        : code === "bad_email" ? "That doesn't look like an email address."
+        : "Couldn't make the account. Check your internet and try again.");
+      return;
+    }
+    var s2 = await sb.auth.signInWithPassword({ email: em, password: pw });
+    cloudBusy(false);
+    if (s2.error) { cloudError("Account made, but signing in failed. Tap Sign in."); return; }
+    $("cloud-pass").value = "";
+    signedIn(s2.data.user);
+    toast("Account made. Saving your invoices online…");
+  });
+  $("cloud-sync").addEventListener("click", function () { syncNow(true); });
+  $("cloud-signout").addEventListener("click", async function () {
+    await flush();
+    await sb.auth.signOut();
+    cloudUser = null; renderCloud(); renderSaved();
+    toast("Signed out. Your invoices are still on this phone.");
+  });
+  window.addEventListener("online", function () { scheduleSync(500); });
 
   // ---------- Start ----------
 
@@ -2284,7 +2530,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   // Ask Safari to keep this app's storage (not guaranteed, harmless if refused)
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
   window.addEventListener("pagehide", function () { flush(); });
-  document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
+  document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); else scheduleSync(500); });
+  initCloud();
 })();
 </script>
 </body>

@@ -1,10 +1,11 @@
 // Offline copy of the 1 Blast invoice app. The app page is fetched fresh when online
 // (so updates show straight away) and served from this cache when there's no signal.
-const CACHE = "1blast-v2";
+const CACHE = "1blast-v3";
 const CORE = [
   "./",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+  "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
 ];
 
 self.addEventListener("install", (e) => {
@@ -38,7 +39,7 @@ self.addEventListener("fetch", (e) => {
   }
 
   // Libraries and fonts never change at a given address: cache first
-  if (/^(cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)$/.test(url.hostname)) {
+  if (/^(cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)$/.test(url.hostname)) {
     e.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {
         if (res.ok || res.type === "opaque") { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
