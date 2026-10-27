@@ -148,6 +148,71 @@
   // Customers and time entries, one map keyed by id ("cus-…" and "tim-…")
   var LS_RECORDS = "twb.records";
   var records = lsGet(LS_RECORDS) || {};
+
+  // Invoices, customers and time live in the phone's database storage (IndexedDB), which has far more room
+  // than the 5 MB browser store they started in. Anything still in the old store is moved across at start-up.
+  // If the database can't be used (some private windows), the old store carries on as before.
+  var useIdb = false, dataDbP = null;
+  function dataDb() {
+    if (!dataDbP) dataDbP = new Promise(function (res, rej) {
+      var r;
+      try { r = indexedDB.open("twb-data", 1); } catch (e) { rej(e); return; }
+      r.onupgradeneeded = function () { r.result.createObjectStore("kv"); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+    return dataDbP;
+  }
+  function kvGet(key) {
+    return dataDb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var q = db.transaction("kv", "readonly").objectStore("kv").get(key);
+        q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); };
+      });
+    });
+  }
+  function kvPut(key, val) {
+    return dataDb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction("kv", "readwrite");
+        tx.objectStore("kv").put(val, key);
+        tx.oncomplete = function () { res(); }; tx.onerror = function () { rej(tx.error); }; tx.onabort = function () { rej(tx.error); };
+      });
+    });
+  }
+  function persistKey(key) {
+    var val = key === "saved" ? savedLocal : records, lsKey = key === "saved" ? LS_SAVED : LS_RECORDS;
+    if (!useIdb) {
+      try { localStorage.setItem(lsKey, JSON.stringify(val)); return Promise.resolve(); }
+      catch (e) { storageProblem(); return Promise.reject(e); }
+    }
+    return kvPut(key, val).catch(function (e) { storageProblem(); throw e; });
+  }
+  function saveSaved() { persistKey("saved").catch(function () {}); }
+  // Newer copies win, so nothing in the old store is lost when it's merged in
+  function mergeInto(base, extra) {
+    Object.keys(extra || {}).forEach(function (k) {
+      var a = base[k], b = extra[k];
+      if (b && (!a || (b.updatedAt || 0) > (a.updatedAt || 0))) base[k] = b;
+    });
+  }
+  function bootStores() {
+    if (!window.indexedDB) return Promise.resolve();
+    var gaveUp = false;
+    var load = Promise.all([kvGet("saved"), kvGet("records")]).then(function (v) {
+      if (gaveUp) return;
+      var s0 = v[0] && typeof v[0] === "object" ? v[0] : {}, r0 = v[1] && typeof v[1] === "object" ? v[1] : {};
+      mergeInto(s0, savedLocal); mergeInto(r0, records);
+      return Promise.all([kvPut("saved", s0), kvPut("records", r0)]).then(function () {
+        if (gaveUp) return;
+        savedLocal = s0; records = r0; useIdb = true;
+        try { localStorage.removeItem(LS_SAVED); localStorage.removeItem(LS_RECORDS); } catch (e) {}
+      });
+    });
+    // A database that never answers (it happens on some older iPhones) mustn't stop the app opening
+    var wait = new Promise(function (res) { setTimeout(function () { gaveUp = true; res(); }, 3000); });
+    return Promise.race([load, wait]).catch(function () {});
+  }
   function savedMap() { return savedLocal; }
   var lastSavedJson = savedMap()[inv.id] ? stable(stripForCompare(savedMap()[inv.id])) : null;
   var saveState = "idle";      // idle | saving | saved | error
@@ -373,7 +438,7 @@
         settings.services.push({ id: sid(), name: name || "New service", desc: it.desc || "", type: it.type,
           rate: isQty(it) ? it.rate || "" : "", hrs: isQty(it) ? it.hrs || "" : "", amt: it.type === "fixed" ? it.amt || "" : "" });
         settingsChanged(); renderAddButtons(); renderServices();
-        toast("Saved as a service. Rename it on the Company tab.");
+        toast("Saved as a service. Rename it under Settings.");
       });
       card.querySelectorAll(".cur").forEach(function (c) { c.textContent = sym; });
       card.querySelectorAll("[data-t]").forEach(function (b) {
@@ -687,7 +752,7 @@
   async function putInvoice(body) {
     savedLocal[body.id] = body;
     markDirty(body.id);
-    localStorage.setItem(LS_SAVED, JSON.stringify(savedLocal));
+    await persistKey("saved");
     renderSaved();
   }
   async function flush() {
@@ -780,7 +845,7 @@
   function renderSavedList() {
     $("store-note").textContent = cloudUser
       ? "Saved on this phone and online" + (cloud.lastSync ? " (last synced " + ago(cloud.lastSync) + ")" : "") + "."
-      : "Saved on this phone only. Turn on online saving on the Company tab, or make a backup now and then (bottom of this page).";
+      : "Saved on this phone only. Turn on online saving in Settings, or make a backup now and then (bottom of this page).";
 
     var all = sortedSaved(), invs = all.filter(function (x) { return !isQuote(x); });
     function owedSum(arr) { return round2(arr.reduce(function (t, x) { return t + balanceOf(x); }, 0)); }
@@ -883,7 +948,7 @@
     if (savedLocal[id]) {
       fn(savedLocal[id]);
       savedLocal[id].updatedAt = Date.now();
-      try { localStorage.setItem(LS_SAVED, JSON.stringify(savedLocal)); } catch (e) { toast("Couldn't update that invoice."); }
+      saveSaved();
       markDirty(id);
     }
     if (id === inv.id) { fn(inv); changed(); }
@@ -1008,7 +1073,7 @@
     next.fromQuote = quote.no;
     next.items.forEach(function (it) { it.id = lid(); });
     next.no = ""; inv = next; next.no = nextNo("invoice"); inv = keep;
-    if (savedLocal[qid]) { savedLocal[qid].quoteStatus = "accepted"; savedLocal[qid].convertedTo = next.no; savedLocal[qid].updatedAt = Date.now(); lsSet(LS_SAVED, savedLocal); markDirty(qid); }
+    if (savedLocal[qid]) { savedLocal[qid].quoteStatus = "accepted"; savedLocal[qid].convertedTo = next.no; savedLocal[qid].updatedAt = Date.now(); saveSaved(); markDirty(qid); }
     inv = next; inv.isExample = false; lastSavedJson = null;
     lsSet(LS_DRAFT, draftBody());
     renderAll(); show("edit");
@@ -1034,11 +1099,11 @@
   async function deleteInvoice(s) {
     var copy = clone(s), wasOpen = s.id === inv.id;
     try {
-      delete savedLocal[s.id]; lsSet(LS_SAVED, savedLocal); markDeleted(s.id);
+      delete savedLocal[s.id]; saveSaved(); markDeleted(s.id);
       if (wasOpen) { inv = blankInvoice(nextNo("invoice")); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); renderAll(); }
       else renderSaved();
       toast((isQuote(s) ? "Quote #" : "Invoice #") + (s.no || "") + " deleted", "Undo", function () {
-        copy.updatedAt = Date.now(); savedLocal[copy.id] = copy; lsSet(LS_SAVED, savedLocal); markDirty(copy.id);
+        copy.updatedAt = Date.now(); savedLocal[copy.id] = copy; saveSaved(); markDirty(copy.id);
         if (wasOpen && !worthSaving()) openInvoice(copy, false); else renderSaved();
       });
     } catch (e) { toast("Couldn't delete that invoice."); }
@@ -1126,7 +1191,7 @@
   function normName(n) { return String(n || "").trim().replace(/\s+/g, " ").toLowerCase(); }
 
   function saveRecords() {
-    try { localStorage.setItem(LS_RECORDS, JSON.stringify(records)); } catch (e) { storageProblem(); }
+    persistKey("records").catch(function () {});
   }
   function putRecord(r) { r.updatedAt = Date.now(); records[r.id] = r; saveRecords(); markRecDirty(r.id); }
   function dropRecord(id) { delete records[id]; saveRecords(); markRecDeleted(id); }
@@ -1386,7 +1451,7 @@
     renderNudges();
   });
   $("h-cloud-go").addEventListener("click", function () {
-    show("company");
+    show("settings");
     setTimeout(function () { $("cloud-card").scrollIntoView({ block: "start" }); $("cloud-email").focus(); }, 0);
   });
   var barPick = 5;
@@ -1505,7 +1570,7 @@
       setText("h-vat-label", label + " charged");
       setText("h-vat-amt", money(round2(vat)));
       setText("h-vat-note", (cash ? "Counted when you're paid (cash accounting)" : "Counted by invoice date") + ", from " + plural(n, "invoice") +
-        ". The return and payment are due by " + fmtDate(isoAddDays(addMonths(q.to, 1), 6)) + ". Change how it's counted on the Company tab, under Money.");
+        ". The return and payment are due by " + fmtDate(isoAddDays(addMonths(q.to, 1), 6)) + ". Change how it's counted in Settings, under Money and VAT.");
     }
     $("h-stats").hidden = homeOff("stats");
     HOME_CARDS.forEach(function (h) { if (homeOff(h[0])) $(h[1]).hidden = true; });
@@ -1971,11 +2036,12 @@
   }
 
   // ---------- Tabs ----------
-  var VIEWS = ["setup", "home", "edit", "inv", "time", "customers", "customer", "saved", "company"];
+  var VIEWS = ["setup", "home", "edit", "inv", "time", "customers", "customer", "saved", "company", "settings"];
   var TAB_OF = { home: "tab-home", edit: "tab-edit", inv: "tab-edit", time: "tab-time", customers: "tab-cust", customer: "tab-cust", saved: "tab-saved" };
   var currentView = "home", viewBeforeCompany = "home";
   function show(which) {
-    if (which === "company" && currentView !== "company") viewBeforeCompany = currentView === "setup" ? "home" : currentView;
+    var inSettings = which === "company" || which === "settings";
+    if (inSettings && currentView !== "company" && currentView !== "settings") viewBeforeCompany = currentView === "setup" ? "home" : currentView;
     VIEWS.forEach(function (v) { $("view-" + v).hidden = v !== which; });
     ["tab-home", "tab-edit", "tab-time", "tab-cust", "tab-saved"].forEach(function (id) {
       if (TAB_OF[which] === id) $(id).setAttribute("aria-current", "page"); else $(id).removeAttribute("aria-current");
@@ -1985,11 +2051,11 @@
     $("hdr-total").hidden = !invView;
     document.querySelector(".brand-sub").hidden = !invView;
     $("hdr-company").hidden = which === "setup";
-    $("hdr-company").setAttribute("aria-pressed", String(which === "company"));
+    $("hdr-company").setAttribute("aria-pressed", String(inSettings));
     document.querySelectorAll("[data-go]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-go") === which)); });
     if (which !== "edit") flush();
     if (which === "inv") schedulePrep();
-    if (which === "company") { renderHomeSet(); renderNumPreview(); }
+    if (which === "settings") { renderHomeSet(); renderNumPreview(); }
     document.querySelectorAll("[data-del-confirm]").forEach(function (c) { c.hidden = true; });
     document.querySelectorAll("[data-del-open]").forEach(function (b) { b.hidden = b.id === "del-inv" ? !canDelete() : false; });
     currentView = which;
@@ -2002,12 +2068,13 @@
   $("tab-cust").addEventListener("click", function () { show("customers"); });
   $("tab-saved").addEventListener("click", function () { show("saved"); });
   document.querySelectorAll("[data-go]").forEach(function (b) { b.addEventListener("click", function () { show(b.getAttribute("data-go")); }); });
-  $("hdr-company").addEventListener("click", function () { show(currentView === "company" ? viewBeforeCompany : "company"); });
+  $("hdr-company").addEventListener("click", function () { show(currentView === "company" || currentView === "settings" ? viewBeforeCompany : "company"); });
   $("go-company").addEventListener("click", function () { show("company"); });
   document.querySelectorAll("[data-jump]").forEach(function (b) {
     b.addEventListener("click", function () { var t = $(b.getAttribute("data-jump")); if (t) t.scrollIntoView({ block: "start", behavior: "smooth" }); });
   });
-  $("company-done").addEventListener("click", function () { show(viewBeforeCompany); toast("Company info saved"); });
+  $("company-done").addEventListener("click", function () { show(viewBeforeCompany); toast("Saved"); });
+  $("settings-done").addEventListener("click", function () { show(viewBeforeCompany); toast("Saved"); });
   $("go-invoice").addEventListener("click", function () { show("inv"); });
   $("back-edit").addEventListener("click", function () { show("edit"); });
 
@@ -2041,9 +2108,9 @@
     finishSetup();
     toast("All set. Here's an example invoice to try.");
   });
-  $("su-skip").addEventListener("click", function () { finishSetup(); toast("You can fill in your details any time on the Company tab."); });
+  $("su-skip").addEventListener("click", function () { finishSetup(); toast("You can fill in your details any time under Settings."); });
   $("setup-signin").addEventListener("click", function () {
-    show("company");
+    show("settings");
     setTimeout(function () { $("cloud-card").scrollIntoView({ block: "start" }); $("cloud-email").focus(); }, 0);
   });
 
@@ -2866,7 +2933,7 @@
     if (on) { sigUrl = URL.createObjectURL(sigCard); img.src = sigUrl; }
     img.hidden = !on;
     $("email-card").checked = settings.emailCard !== false;
-    setText("email-card-hint", !settings.logo ? "Add your logo at the top of this tab first."
+    setText("email-card-hint", !settings.logo ? "Add your logo under Your business first."
       : "It's a picture of your logo with your details, on your colours. iPhone Mail shows it under the sign-off. Some other email apps show it as an attachment instead.");
   }
   $("email-card").addEventListener("change", function () {
@@ -3017,7 +3084,7 @@
           if (!records[k] || (rr.updatedAt || 0) > (records[k].updatedAt || 0)) { records[k] = rr; markRecDirty(k); rAdded++; }
         });
         if (rAdded) saveRecords();
-        lsSet(LS_SAVED, savedLocal);
+        saveSaved();
         var photos = data.photos && typeof data.photos === "object" ? data.photos : {};
         Promise.all(Object.keys(photos).map(function (id) {
           return photoPut(id, photos[id]).then(function () { photoCache[id] = photos[id]; }, function () {});
@@ -3041,7 +3108,7 @@
     if (h.get("error_code") || q.get("error_code")) return "error";
     return h.get("type") || "";
   })();
-  var needPassword = linkType === "invite" || linkType === "recovery" ? linkType : "";
+  var needPassword = linkType === "invite" || linkType === "recovery" || linkType === "signup" ? linkType : "";
   var cloud = lsGet(LS_CLOUD) || {};
   function fixCloud() {
     cloud.dirty = cloud.dirty && typeof cloud.dirty === "object" ? cloud.dirty : {};
@@ -3119,7 +3186,7 @@
         }
       });
       if (maxTs) cloud.lastPull = maxTs;
-      if (changedLocal) lsSet(LS_SAVED, savedLocal);
+      if (changedLocal) saveSaved();
       var sres = await sb.from("app_settings").select("settings").maybeSingle();
       if (sres.error) throw sres.error;
       if (sres.data && sres.data.settings && (!settings.updatedAt || (sres.data.settings.updatedAt || 0) > settings.updatedAt)) {
@@ -3215,7 +3282,16 @@
     renderCloud(); renderSaved();
     syncNow();
   }
-  function cloudError(msg) { var el = $("cloud-err"); el.textContent = msg; el.hidden = !msg; }
+  function cloudError(msg) { var el = $("cloud-err"); el.textContent = msg; el.hidden = !msg; if (msg) $("cloud-check").hidden = true; }
+  var checkEmail = "";
+  function showCheckEmail(em, msg) { checkEmail = em; cloudError(""); setText("cloud-check-text", msg); $("cloud-check").hidden = false; }
+  $("cloud-resend").addEventListener("click", async function () {
+    if (!checkEmail) return;
+    var btn = this; btn.disabled = true;
+    var r = await sb.auth.resend({ type: "signup", email: checkEmail, options: { emailRedirectTo: location.origin + location.pathname } });
+    btn.disabled = false;
+    toast(r.error ? (r.error.status === 429 ? "Wait a minute before asking for another link." : "Couldn't send it. Check your internet and try again.") : "Sent. Check your email.");
+  });
   function cloudBusy(on) { $("cloud-signin").disabled = on; $("cloud-signup").disabled = on; }
   function renderCloud() {
     var chip = $("cloud-chip");
@@ -3225,6 +3301,7 @@
     $("cloud-setpw").hidden = !(cloudUser && needPassword);
     if (cloudUser && needPassword) setText("setpw-title", needPassword === "invite"
       ? "Welcome! Choose a password so you can sign in on any phone, tablet or computer."
+      : needPassword === "signup" ? "Email confirmed. To finish, choose the password you'll sign in with."
       : "Choose a new password for " + cloudUser.email + ".");
     if (!cloudUser) { chip.className = "chip declined"; chip.textContent = "Off"; return; }
     chip.className = "chip " + (cloudState === "error" ? "overdue" : "paid");
@@ -3246,7 +3323,7 @@
       if (linkType) { try { history.replaceState(null, "", location.pathname); } catch (e) {} }
       if (linkType === "error") toast("That link has run out or was already used. Ask for a new one.", null, null, 6000);
       else if (u && needPassword) askForPassword();
-      else if (u && (linkType === "signup" || linkType === "email_change")) toast("Email confirmed. You're signed in.");
+      else if (u && linkType === "email_change") toast("Email confirmed. You're signed in.");
     });
     sb.auth.onAuthStateChange(function (ev, session) {
       if (ev === "SIGNED_OUT") { cloudUser = null; renderCloud(); renderSaved(); }
@@ -3261,6 +3338,7 @@
     var r = await sb.auth.signInWithPassword({ email: em, password: pw });
     cloudBusy(false);
     if (r.error) {
+      if (r.error.code === "email_not_confirmed") { showCheckEmail(em, "Confirm your email first. Tap the link in the email we sent to " + em + ", then sign in. Check Junk if it's not there."); return; }
       cloudError(/invalid/i.test(r.error.message || "") ? "That email and password don't match. Check them, or tap Create account if you haven't made one yet."
         : "Couldn't sign in. Check your internet and try again.");
       return;
@@ -3274,7 +3352,7 @@
     if (!em || !pw) { cloudError("Put in your email and choose a password."); return; }
     if (pw.length < 8) { cloudError("Make the password at least 8 characters."); return; }
     cloudError(""); cloudBusy(true);
-    var r = await sb.functions.invoke("create-account", { body: { email: em, password: pw } });
+    var r = await sb.functions.invoke("create-account", { body: { email: em, password: pw, redirectTo: location.origin + location.pathname } });
     if (r.error) {
       var code = "";
       try { code = (await r.error.context.json()).error; } catch (e) {}
@@ -3283,7 +3361,15 @@
         : code === "exists" ? "There's already an account for this email. Tap Sign in instead."
         : code === "weak_password" ? "Make the password at least 8 characters."
         : code === "bad_email" ? "That doesn't look like an email address."
+        : code === "busy" ? "Too many emails sent just now. Try again in a little while."
         : "Couldn't make the account. Check your internet and try again.");
+      return;
+    }
+    var made = r.data || {};
+    if (!made.confirmed) {
+      cloudBusy(false);
+      $("cloud-pass").value = "";
+      showCheckEmail(em, "Nearly done. We've sent a link to " + em + ". Open it on this phone to confirm your email and finish making your account. It can take a minute; check Junk if it's not there.");
       return;
     }
     var s2 = await sb.auth.signInWithPassword({ email: em, password: pw });
@@ -3294,7 +3380,7 @@
     toast("Account made. Saving your invoices online…");
   });
   function askForPassword() {
-    renderCloud(); show("company");
+    renderCloud(); show("settings");
     setTimeout(function () { $("cloud-card").scrollIntoView({ block: "start" }); $("setpw-pass").focus(); }, 0);
   }
   $("setpw-save").addEventListener("click", async function () {
@@ -3303,6 +3389,8 @@
     err.hidden = true; btn.disabled = true;
     var r = await sb.auth.updateUser({ password: pw });
     btn.disabled = false;
+    // Just after signing up, typing the same password again is exactly what we want
+    if (r.error && r.error.code === "same_password" && needPassword === "signup") r = { error: null };
     if (r.error) {
       err.textContent = r.error.code === "same_password" ? "That's the password you have now. Choose a different one."
         : r.error.code === "weak_password" ? "That password is too easy to guess. Try a longer one."
@@ -3338,26 +3426,27 @@
   });
   window.addEventListener("online", function () { scheduleSync(500); });
 
-  // ---------- Start ----------
-
-  if (savedLocal[inv.id]) lastSavedJson = stable(stripForCompare(savedLocal[inv.id]));
-  renderAll();
-  setTimeout(function () {
-    photoKeys().then(function (keys) {
-      var used = {};
-      usedPhotoIds().forEach(function (id) { used[id] = 1; });
-      (keys || []).forEach(function (k) { if (!used[k]) photoDel(k); });
-    }).catch(function () {});
-  }, 4000);
-  // Keep a copy of the app and its PDF and picture makers so it opens with no signal
-  try {
-    if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
-  } catch (e) {}
-  // Ask Safari to keep this app's storage (not guaranteed, harmless if refused)
-  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-  window.addEventListener("pagehide", function () { flush(); });
-  document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); else scheduleSync(500); });
-  initCloud();
-  fetchPresetLogo();
-  show(settings.setupDone ? "home" : "setup");
+  // ---------- Start (once invoices, customers and time have loaded) ----------
+  bootStores().then(function () {
+    if (savedLocal[inv.id]) lastSavedJson = stable(stripForCompare(savedLocal[inv.id]));
+    renderAll();
+    setTimeout(function () {
+      photoKeys().then(function (keys) {
+        var used = {};
+        usedPhotoIds().forEach(function (id) { used[id] = 1; });
+        (keys || []).forEach(function (k) { if (!used[k]) photoDel(k); });
+      }).catch(function () {});
+    }, 4000);
+    // Keep a copy of the app and its PDF and picture makers so it opens with no signal
+    try {
+      if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
+    } catch (e) {}
+    // Ask Safari to keep this app's storage (not guaranteed, harmless if refused)
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+    window.addEventListener("pagehide", function () { flush(); });
+    document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); else scheduleSync(500); });
+    initCloud();
+    fetchPresetLogo();
+    show(settings.setupDone ? "home" : "setup");
+  });
 })();
