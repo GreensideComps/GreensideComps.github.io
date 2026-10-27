@@ -675,6 +675,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       </svg>
       <div class="timer-clock" id="tm-clock">0:00:00</div>
       <label class="f"><span>Customer</span><input id="tm-cust" list="cust-list" autocomplete="off"></label>
+      <label class="f"><span>Work</span><select id="tm-svc" data-svc-select></select></label>
       <label class="f"><span>What you're doing</span><input id="tm-desc" autocomplete="off" placeholder="e.g. Fitting new radiators"></label>
       <button class="btn primary" id="tm-start" type="button">Start timer</button>
       <div class="row" id="tm-running" hidden><button class="btn" id="tm-cancel" type="button">Throw away</button><button class="btn primary" id="tm-stop" type="button">Stop and save</button></div>
@@ -700,6 +701,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         <label class="f"><span>Hours</span><input id="at-hrs" class="num" inputmode="decimal" placeholder="e.g. 2.5"></label>
       </div>
       <label class="f"><span>Customer</span><input id="at-cust" list="cust-list" autocomplete="off"></label>
+      <label class="f"><span>Work</span><select id="at-svc" data-svc-select></select></label>
       <label class="f"><span>What was done</span><input id="at-desc" autocomplete="off"></label>
       <label class="f"><span>Rate per hour</span><span class="money"><span class="cur" data-cur></span><input id="at-rate" class="num" inputmode="decimal" placeholder="0.00"></span></label>
       <p class="hint warn" id="at-err" hidden></p>
@@ -1236,6 +1238,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     <button class="btn primary" id="ls-stop" type="button">Stop and save</button>
   </div>
   <label class="f"><span>Customer</span><input id="ls-cust" list="cust-list" autocomplete="off"></label>
+  <label class="f"><span>Work</span><select id="ls-svc" data-svc-select></select></label>
   <label class="f"><span>What you're doing</span><input id="ls-desc" autocomplete="off"></label>
   <button class="btn primary" id="ls-start" type="button">Start timer now</button>
   <p class="sub-head">Or add hours you've already done</p>

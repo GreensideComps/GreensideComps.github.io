@@ -1625,6 +1625,7 @@
     $("tm-start").hidden = !!r;
     $("tm-running").hidden = !r;
     if (r) { setIfIdle("tm-cust", r.custName); setIfIdle("tm-desc", r.desc); }
+    renderSvcSelects();
     $("h-timer").hidden = !r;
     if (r) {
       setText("h-timer-text", (r.custName || "No customer") + (r.desc ? " · " + r.desc : "") + " · started " +
@@ -1639,17 +1640,65 @@
     if (!r) return;
     r.custName = $("tm-cust").value.trim(); r.desc = $("tm-desc").value.trim();
     clearTimeout(tmSaveTimer);
-    tmSaveTimer = setTimeout(function () { r.rate = defaultRate(r.custName); putRecord(r); }, 800);
+    tmSaveTimer = setTimeout(function () { r.rate = rateFor(r.svc, r.custName); putRecord(r); }, 800);
   }
   $("tm-cust").addEventListener("input", timerFields);
   $("tm-desc").addEventListener("input", timerFields);
-  function startTimer(name, desc) {
+  // ---------- The Work drop-down: saved hourly services, plus Other ----------
+  function hourlyServices() { return settings.services.filter(function (sv) { return sv.type === "hourly" && String(sv.name || sv.desc || "").trim(); }); }
+  function svcById(id) { return id ? settings.services.filter(function (sv) { return sv.id === id; })[0] || null : null; }
+  function svcWording(sv) { return String(sv.desc || sv.name || "").trim(); }
+  // A chosen service brings its own rate; Other uses the customer's rate or the usual one
+  function rateFor(svcId, custName) { var sv = svcById(svcId); return sv && num(sv.rate) ? sv.rate : defaultRate(custName); }
+  function fillSvcSelect(sel, keep) {
+    var list = hourlyServices(), key = list.map(function (sv) { return sv.id + ":" + sv.name + ":" + sv.rate; }).join("|");
+    var want = keep != null ? keep : sel.value;
+    if (sel.dataset.key !== key) {
+      sel.innerHTML = "";
+      list.forEach(function (sv) {
+        var o = document.createElement("option");
+        o.value = sv.id; o.textContent = (sv.name || sv.desc) + (num(sv.rate) ? " (" + money(num(sv.rate)) + "/hr)" : "");
+        sel.append(o);
+      });
+      var other = document.createElement("option"); other.value = ""; other.textContent = "Other (type it in)"; sel.append(other);
+      sel.dataset.key = key;
+    }
+    sel.value = svcById(want) && list.indexOf(svcById(want)) >= 0 ? want : "";
+  }
+  function lastSvc() { var sv = svcById(settings.lastTimeSvc); return sv && sv.type === "hourly" ? sv.id : (hourlyServices()[0] || {}).id || ""; }
+  function rememberSvc(id) { if (settings.lastTimeSvc !== id) { settings.lastTimeSvc = id; settingsChanged(); } }
+  // When the work changes, swap in its wording (unless the person has typed their own) and its rate
+  function onSvcChange(sel, descEl, rateEl, custName) {
+    var sv = svcById(sel.value), cur = String(descEl.value || "").trim();
+    var wasService = !cur || settings.services.some(function (x) { return svcWording(x) === cur; });
+    if (sv && wasService) descEl.value = svcWording(sv);
+    if (!sv && wasService) descEl.value = "";
+    if (rateEl) { rateEl.value = rateFor(sel.value, custName); delete rateEl.dataset.touched; }
+    if (!sv) descEl.focus();
+  }
+  function renderSvcSelects() {
+    var r = runningTimer();
+    fillSvcSelect($("tm-svc"), r ? r.svc || "" : document.activeElement === $("tm-svc") ? null : $("tm-svc").dataset.chosen || lastSvc());
+    fillSvcSelect($("at-svc"), document.activeElement === $("at-svc") ? null : $("at-svc").dataset.chosen || lastSvc());
+  }
+  ["tm-svc", "at-svc", "ls-svc"].forEach(function (id) { $(id).addEventListener("change", function () { this.dataset.chosen = this.value || "other"; }); });
+  $("tm-svc").addEventListener("change", function () {
+    onSvcChange(this, $("tm-desc"), null, $("tm-cust").value);
+    rememberSvc(this.value);
+    var r = runningTimer();
+    if (r) { r.svc = this.value; r.desc = $("tm-desc").value.trim(); r.rate = rateFor(r.svc, r.custName); putRecord(r); }
+  });
+  $("at-svc").addEventListener("change", function () { onSvcChange(this, $("at-desc"), $("at-rate"), $("at-cust").value); rememberSvc(this.value); });
+  $("ls-svc").addEventListener("change", function () { onSvcChange(this, $("ls-desc"), null, $("ls-cust").value); rememberSvc(this.value); });
+
+  function startTimer(name, desc, svc) {
     if (runningTimer()) return;
-    putRecord({ id: rid("tim"), kind: "time", running: true, start: Date.now(), date: todayIso(), custName: name, desc: desc, rate: defaultRate(name) });
+    if (!desc && svcById(svc)) desc = svcWording(svcById(svc));
+    putRecord({ id: rid("tim"), kind: "time", running: true, start: Date.now(), date: todayIso(), custName: name, desc: desc, svc: svc || "", rate: rateFor(svc, name) });
     renderOverview();
     toast("Timer started" + (name ? " for " + name : ""));
   }
-  $("tm-start").addEventListener("click", function () { startTimer($("tm-cust").value.trim(), $("tm-desc").value.trim()); });
+  $("tm-start").addEventListener("click", function () { startTimer($("tm-cust").value.trim(), $("tm-desc").value.trim(), $("tm-svc").value); });
 
   // ---------- Quick log-time panel ----------
   function openLogSheet(name) {
@@ -1658,7 +1707,9 @@
       if (name) { $("at-cust").value = name; if (!runningTimer()) $("tm-cust").value = name; if (!$("at-rate").dataset.touched) $("at-rate").value = defaultRate(name); }
       return;
     }
-    $("ls-cust").value = name || ""; $("ls-desc").value = ""; $("ls-hrs").value = ""; $("ls-date").value = todayIso();
+    $("ls-cust").value = name || ""; $("ls-hrs").value = ""; $("ls-date").value = todayIso();
+    fillSvcSelect($("ls-svc"), lastSvc());
+    $("ls-desc").value = svcById($("ls-svc").value) ? svcWording(svcById($("ls-svc").value)) : "";
     sheetOpener = document.activeElement;
     $("sheet-bg").hidden = false; $("log-sheet").hidden = false;
     renderSheet();
@@ -1687,13 +1738,13 @@
     if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
     else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
   });
-  $("ls-start").addEventListener("click", function () { startTimer($("ls-cust").value.trim(), $("ls-desc").value.trim()); closeLogSheet(); });
+  $("ls-start").addEventListener("click", function () { startTimer($("ls-cust").value.trim(), $("ls-desc").value.trim(), $("ls-svc").value); closeLogSheet(); });
   $("ls-stop").addEventListener("click", function () { stopTimer(); closeLogSheet(); });
   $("ls-full").addEventListener("click", function () { closeLogSheet(); show("time"); });
   $("ls-add").addEventListener("click", function () {
     var hrs = num($("ls-hrs").value), name = $("ls-cust").value.trim();
     if (!(hrs > 0)) { toast("Put in how many hours, for example 2.5."); $("ls-hrs").focus(); return; }
-    var e = { id: rid("tim"), kind: "time", date: $("ls-date").value || todayIso(), hrs: String(round2(hrs)), custName: name, desc: $("ls-desc").value.trim(), rate: defaultRate(name) };
+    var e = { id: rid("tim"), kind: "time", date: $("ls-date").value || todayIso(), hrs: String(round2(hrs)), custName: name, desc: $("ls-desc").value.trim(), svc: $("ls-svc").value, rate: rateFor($("ls-svc").value, name) };
     putRecord(e);
     closeLogSheet(); renderOverview();
     toast("Added " + fmtHrs(hrs) + (name ? " for " + name : ""), "Undo", function () { dropRecord(e.id); renderOverview(); });
@@ -1750,7 +1801,10 @@
     renderBillRows($("ts-bill-list"), groups);
     $("ts-bill").hidden = !groups.length;
     if (!$("at-date").value) $("at-date").value = t;
-    if (!$("at-rate").dataset.touched) setIfIdle("at-rate", defaultRate($("at-cust").value));
+    renderSvcSelects();
+    if (!$("at-rate").dataset.touched) setIfIdle("at-rate", rateFor($("at-svc").value, $("at-cust").value));
+    if (!$("at-desc").value && document.activeElement !== $("at-desc") && svcById($("at-svc").value)) $("at-desc").value = svcWording(svcById($("at-svc").value));
+    if (!runningTimer() && !$("tm-desc").value && document.activeElement !== $("tm-desc") && svcById($("tm-svc").value)) $("tm-desc").value = svcWording(svcById($("tm-svc").value));
 
     var list = all.filter(function (e) { return timeFilter === "all" || (timeFilter === "billed") === !!bm[e.id]; });
     var box = $("time-list");
@@ -1784,7 +1838,7 @@
     ib.addEventListener("click", function () { if (b.id === inv.id) show("edit"); else if (savedLocal[b.id]) openInvoice(savedLocal[b.id], false); });
     card.querySelector('[data-a="edit"]').addEventListener("click", function () {
       editTimeId = e.id;
-      timeDraft = { date: e.date || "", hrs: e.hrs || "", custName: e.custName || "", desc: e.desc || "", rate: e.rate || "" };
+      timeDraft = { date: e.date || "", hrs: e.hrs || "", custName: e.custName || "", desc: e.desc || "", rate: e.rate || "", svc: e.svc || "" };
       renderTime();
     });
     card.querySelector('[data-a="del"]').addEventListener("click", function () {
@@ -1801,6 +1855,7 @@
     card.innerHTML = '<p class="eyebrow">Change time entry</p>' +
       '<div class="row"><label class="f"><span>Date</span><input type="date" data-k="date"></label><label class="f"><span>Hours</span><input class="num" inputmode="decimal" data-k="hrs"></label></div>' +
       '<label class="f"><span>Customer</span><input data-k="custName" list="cust-list" autocomplete="off"></label>' +
+      '<label class="f"><span>Work</span><select data-svc></select></label>' +
       '<label class="f"><span>What was done</span><input data-k="desc" autocomplete="off"></label>' +
       '<label class="f"><span>Rate per hour</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-k="rate"></span></label>' +
       '<p class="hint" data-billed hidden></p>' +
@@ -1811,12 +1866,19 @@
       el.value = timeDraft[k] || "";
       el.addEventListener("input", function () { timeDraft[k] = el.value; });
     });
+    var sel = card.querySelector("[data-svc]");
+    fillSvcSelect(sel, timeDraft.svc || "");
+    sel.addEventListener("change", function () {
+      var d = card.querySelector('[data-k="desc"]'), rt = card.querySelector('[data-k="rate"]');
+      onSvcChange(sel, d, rt, timeDraft.custName);
+      timeDraft.svc = sel.value; timeDraft.desc = d.value; timeDraft.rate = rt.value;
+    });
     if (b) { var h = card.querySelector("[data-billed]"); h.hidden = false; h.textContent = "This is already on invoice #" + (b.no || "—") + ". Changing it here doesn't change the invoice."; }
     card.querySelector('[data-a="cancel"]').addEventListener("click", function () { editTimeId = null; timeDraft = null; renderTime(); });
     card.querySelector('[data-a="save"]').addEventListener("click", function () {
       if (!(num(timeDraft.hrs) > 0)) { toast("Put in the hours first."); return; }
       e.date = timeDraft.date || todayIso(); e.hrs = String(round2(num(timeDraft.hrs)));
-      e.custName = String(timeDraft.custName || "").trim(); e.desc = String(timeDraft.desc || "").trim(); e.rate = String(timeDraft.rate || "").trim();
+      e.custName = String(timeDraft.custName || "").trim(); e.desc = String(timeDraft.desc || "").trim(); e.rate = String(timeDraft.rate || "").trim(); e.svc = timeDraft.svc || "";
       putRecord(e);
       editTimeId = null; timeDraft = null;
       renderOverview();
@@ -1824,16 +1886,16 @@
     });
     return card;
   }
-  $("at-cust").addEventListener("input", function () { if (!$("at-rate").dataset.touched) $("at-rate").value = defaultRate(this.value); });
+  $("at-cust").addEventListener("input", function () { if (!$("at-rate").dataset.touched) $("at-rate").value = rateFor($("at-svc").value, this.value); });
   $("at-rate").addEventListener("input", function () { this.dataset.touched = "1"; });
   $("at-add").addEventListener("click", function () {
     var hrs = num($("at-hrs").value), err = $("at-err");
     if (!(hrs > 0)) { err.textContent = "Put in how many hours, for example 2.5."; err.hidden = false; $("at-hrs").focus(); return; }
     err.hidden = true;
     var e = { id: rid("tim"), kind: "time", date: $("at-date").value || todayIso(), hrs: String(round2(hrs)),
-      custName: $("at-cust").value.trim(), desc: $("at-desc").value.trim(), rate: $("at-rate").value.trim() };
+      custName: $("at-cust").value.trim(), desc: $("at-desc").value.trim(), svc: $("at-svc").value, rate: $("at-rate").value.trim() };
     putRecord(e);
-    $("at-hrs").value = ""; $("at-desc").value = "";
+    $("at-hrs").value = ""; $("at-desc").value = svcById(e.svc) ? svcWording(svcById(e.svc)) : "";
     renderOverview();
     toast("Added " + fmtHrs(hrs) + (e.custName ? " for " + e.custName : ""), "Undo", function () { dropRecord(e.id); renderOverview(); });
   });
