@@ -1444,7 +1444,7 @@
     var later = parseInt(localStorage.getItem(LS_NUDGE) || "0", 10) || 0;
     var hasData = Object.keys(savedLocal).length > 0 || Object.keys(records).length > 0;
     $("h-cloud").hidden = !(sb && !cloudUser && hasData && Date.now() > later);
-    $("h-moved").hidden = !/github\.io$/.test(location.hostname);
+    $("h-moved").hidden = /^(timewellbilled\.netlify\.app|localhost|127\.0\.0\.1)$/.test(location.hostname);
   }
   $("h-cloud-later").addEventListener("click", function () {
     try { localStorage.setItem(LS_NUDGE, String(Date.now() + 7 * 864e5)); } catch (e) {}

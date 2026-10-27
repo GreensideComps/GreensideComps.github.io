@@ -1,6 +1,6 @@
 // Offline copy of Time Well Billed. The app page is fetched fresh when online
 // (so updates show straight away) and served from this cache when there's no signal.
-const CACHE = "twb-v12";
+const CACHE = "twb-v13";
 const CORE = [
   "./",
   "./app.js",
