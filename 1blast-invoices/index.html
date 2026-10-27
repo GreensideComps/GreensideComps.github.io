@@ -116,15 +116,29 @@ input[type="color"] { height: 46px; padding: 4px; cursor: pointer; }
 #hdr-name { font-family: var(--f-display); font-weight: 700; font-style: italic; font-size: 18px; letter-spacing: 0.03em; text-transform: uppercase; }
 .status { font-size: 13px; color: var(--band-muted); }
 .status.ok { color: #8fdcab; }
-.tabs {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
-  background: var(--band-tab); border-radius: 10px; padding: 4px;
+.hdr-right { display: flex; align-items: center; gap: 10px; flex: none; }
+.hdr-btn {
+  font: 600 13px/1 var(--f-body); padding: 8px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--band-muted); background: transparent; color: var(--band-ink);
 }
-.tabs button {
-  font: 600 14px/1 var(--f-body); padding: 11px 2px; border: 0; border-radius: 7px;
-  background: transparent; color: var(--band-ink); cursor: pointer;
+.hdr-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/* Bottom tab bar, like a phone app */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+  background: var(--surface); border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  padding: 4px max(4px, calc((100% - 560px) / 2)) calc(4px + env(safe-area-inset-bottom, 0px));
 }
-.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.tabbar button {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
+  padding: 7px 2px 6px; border: 0; border-radius: 8px; background: none; cursor: pointer;
+  color: var(--muted); font: 600 11.5px/1 var(--f-body);
+}
+.tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tabbar button[aria-selected="true"] { color: var(--accent-text); }
+.tabbar button[aria-selected="true"] svg { stroke-width: 2.3; }
+.view-switch { display: grid; grid-template-columns: 1fr 1fr; }
+.view-switch button { padding: 11px 8px; font-size: 15px; }
 
 .wrap {
   max-width: 560px; margin: 0 auto;
@@ -165,7 +179,6 @@ input.num { font-family: var(--f-num); font-size: 17px; }
 input:focus, textarea:focus, select:focus, button:focus-visible {
   outline: 2px solid var(--focus); outline-offset: 1px;
 }
-.tabs button:focus-visible { outline-color: var(--accent); }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .money { position: relative; display: block; }
 .money input { padding-left: 30px; }
@@ -246,7 +259,7 @@ details.card > div { display: flex; flex-direction: column; gap: 12px; }
 .confirm .row { gap: 8px; }
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   background: var(--band); color: var(--band-ink); font-weight: 600; font-size: 15px;
   padding: 10px 18px; border-radius: 999px; z-index: 20; max-width: calc(100% - 32px);
   display: flex; align-items: center; gap: 12px; border: 1px solid var(--accent);
@@ -323,6 +336,43 @@ details.card > div { display: flex; flex-direction: column; gap: 12px; }
 .pill.unpaid { background: var(--accent-soft) !important; border-color: var(--accent-text) !important; }
 .tag-now { font: 500 11px/1 var(--f-num); padding: 4px 6px; border-radius: 5px; background: var(--accent); color: var(--accent-ink); margin-left: 6px; vertical-align: 2px; }
 .store-note { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* Home, timesheet and customers */
+.quick { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.quick .btn { padding: 14px 6px; font-size: 15px; }
+button.stat { font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer; }
+.stat .n.up { color: var(--ok); }
+.dash-list { display: flex; flex-direction: column; }
+.dash-list.card { gap: 0; padding-block: 6px; }
+.dash-row { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+.dash-row:first-child { border-top: 0; }
+.dash-row.link { background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
+.dash-row.link:first-child { border-top: 0; }
+.dash-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.dash-top > div:first-child { min-width: 0; }
+.dash-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.dash-btns:empty { display: none; }
+.dash-btns .mini { padding: 9px 12px; font-size: 14px; }
+.dash-btns .mini.go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.dash-empty { font-size: 14px; color: var(--muted); padding: 12px 0; margin: 0; }
+.cust-row { font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer; }
+.s-amt.warn { color: var(--danger); }
+.bars { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+.bar-col {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--muted); font: 500 12px/1 var(--f-body); min-width: 0;
+}
+.bar-val { font: 500 12px/1 var(--f-num); color: var(--ink); height: 13px; white-space: nowrap; }
+.bar-track { height: 110px; width: 100%; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--line); }
+.bar { width: 58%; max-width: 40px; background: var(--accent-text); border-radius: 4px 4px 0 0; opacity: .45; }
+.bar-col[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.bar-col[aria-pressed="true"] .bar { opacity: 1; }
+.timer-clock { font: 500 46px/1 var(--f-num); text-align: center; letter-spacing: .02em; padding: 4px 0; }
+.timer-mini { font: 500 18px/1 var(--f-num); }
+.chip.running { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+.chip.billed { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+.chip.unbilled { background: var(--accent-soft); color: var(--ink); border-color: var(--accent-text); }
+.time-edit { display: flex; flex-direction: column; gap: 10px; }
 
 /* Invoice sheet */
 .paper {
@@ -403,11 +453,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .p-legal { font-size: 12px; color: var(--paper-muted); font-family: var(--f-num); }
 
 @media (max-width: 360px) {
-  .row, .p-two, .add-grid { grid-template-columns: 1fr; }
+  .row, .p-two, .add-grid, .quick { grid-template-columns: 1fr; }
   .p-meta { align-items: flex-start; text-align: left; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .tabs button, .btn, .seg button { transition: background-color .15s, color .15s; }
+  .tabbar button, .btn, .seg button { transition: background-color .15s, color .15s; }
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -417,15 +467,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 <header class="top"><div class="top-in">
   <div class="brand">
     <div class="hdr-brand"><img class="hdr-logo" id="hdr-logo" alt="" hidden><span class="hdr-biz" id="hdr-biz">Time Well Billed</span></div>
-    <div class="sum" id="hdr-total">0.00</div>
+    <div class="hdr-right"><div class="sum" id="hdr-total" hidden>0.00</div><button class="hdr-btn" id="hdr-company" type="button" aria-pressed="false">Company</button></div>
   </div>
-  <div class="brand-sub"><span id="hdr-name">Invoice</span><span class="status" id="hdr-status"></span></div>
-  <div class="tabs" role="tablist" id="tabs">
-    <button id="tab-edit" role="tab" aria-selected="true" aria-controls="view-edit">Edit</button>
-    <button id="tab-inv" role="tab" aria-selected="false" aria-controls="view-inv">Invoice</button>
-    <button id="tab-saved" role="tab" aria-selected="false" aria-controls="view-saved">Saved</button>
-    <button id="tab-company" role="tab" aria-selected="false" aria-controls="view-company">Company</button>
-  </div>
+  <div class="brand-sub" hidden><span id="hdr-name">Invoice</span><span class="status" id="hdr-status"></span></div>
 </div></header>
 
 <div class="wrap">
@@ -479,8 +523,147 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     </div>
   </section>
 
+  <!-- HOME -->
+  <section id="view-home" class="view">
+    <div class="card" id="h-timer" hidden>
+      <div class="card-head"><p class="eyebrow">Timer running</p><span class="timer-mini" id="h-timer-clock">0:00:00</span></div>
+      <p class="paid-line" id="h-timer-text"></p>
+      <div class="row"><button class="btn" id="h-timer-open" type="button">Timesheet</button><button class="btn primary" id="h-timer-stop" type="button">Stop and save</button></div>
+    </div>
+    <div class="quick">
+      <button class="btn primary" id="h-new-inv" type="button">New invoice</button>
+      <button class="btn" id="h-new-quote" type="button">New quote</button>
+      <button class="btn" id="h-log-time" type="button">Log time</button>
+    </div>
+    <div class="card" id="h-current" hidden>
+      <div class="card-head"><p class="eyebrow">Open now</p><span class="chip" id="h-current-chip"></span></div>
+      <p class="paid-line" id="h-current-line"></p>
+      <button class="btn" id="h-current-go" type="button">Carry on with it</button>
+    </div>
+    <div class="saved-sum">
+      <button class="stat" type="button" id="h-st-owed"><div class="k">Owed to you</div><div class="v" id="h-owed"></div><div class="n" id="h-owed-n"></div></button>
+      <button class="stat" type="button" id="h-st-overdue"><div class="k">Overdue</div><div class="v" id="h-overdue"></div><div class="n" id="h-overdue-n"></div></button>
+      <button class="stat" type="button" id="h-st-month"><div class="k">Paid in this month</div><div class="v" id="h-month"></div><div class="n" id="h-month-n"></div></button>
+      <button class="stat" type="button" id="h-st-unbilled"><div class="k">Time not billed yet</div><div class="v" id="h-unbilled"></div><div class="n" id="h-unbilled-n"></div></button>
+    </div>
+    <div class="card" id="h-chase" hidden><p class="eyebrow">Needs chasing</p><div class="dash-list" id="h-chase-list"></div></div>
+    <div class="card" id="h-bill" hidden><p class="eyebrow">Ready to bill</p><div class="dash-list" id="h-bill-list"></div></div>
+    <div class="card" id="h-quotes" hidden><p class="eyebrow">Quotes waiting for an answer</p><div class="dash-list" id="h-quotes-list"></div></div>
+    <div class="card" id="h-clear" hidden><p class="eyebrow" id="h-clear-k"></p><p class="hint" id="h-clear-text"></p></div>
+    <div class="card" id="h-chart-card" hidden>
+      <div class="card-head"><p class="eyebrow">Money paid in</p><span class="hint">Last 6 months</span></div>
+      <div class="bars" id="h-bars" role="group" aria-label="Money paid in each month, last 6 months. Tap a month to see it."></div>
+      <p class="paid-line" id="h-bar-detail" aria-live="polite"></p>
+    </div>
+    <div class="card" id="h-vat" hidden>
+      <div class="card-head"><p class="eyebrow" id="h-vat-k">VAT this quarter</p><span class="hint" id="h-vat-range"></span></div>
+      <div class="trow"><span>Sales before VAT</span><span id="h-vat-net"></span></div>
+      <div class="trow grand"><span id="h-vat-label">VAT</span><span id="h-vat-amt"></span></div>
+      <p class="hint" id="h-vat-note"></p>
+    </div>
+  </section>
+
+  <!-- TIME -->
+  <section id="view-time" class="view" hidden>
+    <div class="card" id="timer-card">
+      <div class="card-head"><p class="eyebrow">Timer</p><span class="chip running" id="tm-chip" hidden>Running</span></div>
+      <div class="timer-clock" id="tm-clock">0:00:00</div>
+      <label class="f"><span>Customer</span><input id="tm-cust" list="cust-list" autocomplete="off"></label>
+      <label class="f"><span>What you're doing</span><input id="tm-desc" autocomplete="off" placeholder="e.g. Fitting new radiators"></label>
+      <button class="btn primary" id="tm-start" type="button">Start timer</button>
+      <div class="row" id="tm-running" hidden><button class="btn" id="tm-cancel" type="button">Throw away</button><button class="btn primary" id="tm-stop" type="button">Stop and save</button></div>
+      <label class="f"><span>Round the time up to</span>
+        <select id="tm-round" data-s="timeRound">
+          <option value="1">The nearest minute</option>
+          <option value="6">6 minutes (a tenth of an hour)</option>
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+        </select>
+      </label>
+      <p class="hint">The timer keeps going if you close the app or lock your phone. Signed in, you can stop it on another device too.</p>
+    </div>
+    <div class="saved-sum">
+      <div class="stat"><div class="k">This week</div><div class="v" id="ts-week"></div><div class="n" id="ts-week-n"></div></div>
+      <div class="stat"><div class="k">Not billed yet</div><div class="v" id="ts-un"></div><div class="n" id="ts-un-n"></div></div>
+    </div>
+    <div class="card" id="ts-bill" hidden><p class="eyebrow">Ready to bill</p><div class="dash-list" id="ts-bill-list"></div></div>
+    <div class="card" id="add-time-card">
+      <p class="eyebrow">Add time by hand</p>
+      <div class="row">
+        <label class="f"><span>Date</span><input type="date" id="at-date"></label>
+        <label class="f"><span>Hours</span><input id="at-hrs" class="num" inputmode="decimal" placeholder="e.g. 2.5"></label>
+      </div>
+      <label class="f"><span>Customer</span><input id="at-cust" list="cust-list" autocomplete="off"></label>
+      <label class="f"><span>What was done</span><input id="at-desc" autocomplete="off"></label>
+      <label class="f"><span>Rate per hour</span><span class="money"><span class="cur" data-cur></span><input id="at-rate" class="num" inputmode="decimal" placeholder="0.00"></span></label>
+      <p class="hint warn" id="at-err" hidden></p>
+      <button class="btn primary" id="at-add" type="button">Add to timesheet</button>
+      <p class="hint">Hours can be decimals: 1.5 = 1 hr 30 min, 0.25 = 15 min.</p>
+    </div>
+    <h2 class="section-title">Timesheet</h2>
+    <div class="filters" role="group" aria-label="Show time">
+      <button type="button" data-tfilter="unbilled" aria-pressed="true">Not billed</button>
+      <button type="button" data-tfilter="all" aria-pressed="false">All</button>
+      <button type="button" data-tfilter="billed" aria-pressed="false">Billed</button>
+    </div>
+    <div class="saved-list" id="time-list"></div>
+    <div class="card">
+      <p class="eyebrow">Records</p>
+      <button class="btn" id="time-csv" type="button">Send timesheet as spreadsheet</button>
+      <p class="hint">Every time entry in one sheet, with the invoice each one went on.</p>
+    </div>
+  </section>
+
+  <!-- CUSTOMERS -->
+  <section id="view-customers" class="view" hidden>
+    <input type="search" id="cust-search" placeholder="Search customers" autocomplete="off">
+    <button class="btn" id="cust-add" type="button">Add a customer</button>
+    <div class="card" id="cust-new" hidden>
+      <p class="eyebrow">New customer</p>
+      <label class="f"><span>Name</span><input id="cn-name" autocomplete="off"></label>
+      <label class="f"><span>Phone, email or address</span><textarea id="cn-contact" rows="2"></textarea></label>
+      <p class="hint warn" id="cn-err" hidden></p>
+      <div class="row"><button class="btn" id="cn-cancel" type="button">Cancel</button><button class="btn primary" id="cn-save" type="button">Add customer</button></div>
+    </div>
+    <div class="saved-list" id="cust-box"></div>
+    <p class="hint">Everyone you invoice or log time for shows up here by themselves.</p>
+  </section>
+
+  <!-- ONE CUSTOMER -->
+  <section id="view-customer" class="view" hidden>
+    <button class="linkbtn" id="cd-back" type="button">‹ All customers</button>
+    <h2 class="setup-title" id="cd-title"></h2>
+    <div class="saved-sum">
+      <div class="stat"><div class="k">Owed</div><div class="v" id="cd-owed"></div><div class="n" id="cd-owed-n"></div></div>
+      <div class="stat"><div class="k">Billed in total</div><div class="v" id="cd-billed"></div><div class="n" id="cd-billed-n"></div></div>
+      <div class="stat"><div class="k">Paid</div><div class="v" id="cd-paid"></div><div class="n" id="cd-paid-n"></div></div>
+      <div class="stat"><div class="k">Time not billed yet</div><div class="v" id="cd-un"></div><div class="n" id="cd-un-n"></div></div>
+    </div>
+    <div class="confirm" id="cd-bill-box" hidden><p id="cd-bill-text"></p><button class="btn primary" id="cd-bill" type="button">Bill these hours</button></div>
+    <div class="quick">
+      <button class="btn primary" id="cd-new-inv" type="button">New invoice</button>
+      <button class="btn" id="cd-new-quote" type="button">New quote</button>
+      <button class="btn" id="cd-log" type="button">Log time</button>
+    </div>
+    <div class="card">
+      <p class="eyebrow">Details</p>
+      <label class="f"><span>Name</span><input id="cd-name" autocomplete="off"></label>
+      <label class="f"><span>Phone, email or address (goes on their invoices)</span><textarea id="cd-contact" rows="3"></textarea></label>
+      <label class="f"><span>Their hourly rate, if it's not your usual</span><span class="money"><span class="cur" data-cur></span><input id="cd-rate" class="num" inputmode="decimal" placeholder="Usual rate"></span></label>
+      <label class="f"><span>Notes, just for you</span><textarea id="cd-notes" rows="2" placeholder="e.g. Gate code 1234. Prefers a text."></textarea></label>
+      <p class="hint">Changes save straight away. New invoices for this customer use these details. Ones you've already made keep what they had.</p>
+    </div>
+    <h2 class="section-title">Invoices and quotes</h2>
+    <div class="dash-list card" id="cd-docs"></div>
+    <h2 class="section-title">Time</h2>
+    <div class="dash-list card" id="cd-time"></div>
+    <button class="btn danger" id="cd-del" type="button">Delete customer</button>
+    <p class="hint" id="cd-del-note" hidden>Customers with invoices or time on them stay on the list, so your records add up.</p>
+  </section>
+
   <!-- EDIT -->
-  <section id="view-edit" class="view" role="tabpanel" aria-labelledby="tab-edit">
+  <section id="view-edit" class="view" role="tabpanel" aria-labelledby="tab-edit" hidden>
+    <div class="seg view-switch" role="group" aria-label="Invoice"><button type="button" data-go="edit">Edit</button><button type="button" data-go="inv">Preview &amp; send</button></div>
     <p class="example-note" id="paid-note" hidden>This invoice is marked as paid. Anything you change here updates your saved copy, so only change it if it was wrong.</p>
     <p class="example-note" id="example-note">This is an example invoice. Change the customer, hours or rates, add or remove charges, and it becomes a real one. Invoices save automatically.</p>
 
@@ -512,6 +695,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         </label>
         <label class="f" id="due-date-wrap"><span>Due date</span><input type="date" id="inv-due" data-i="dueDate"></label>
       </div>
+    </div>
+
+    <div class="confirm" id="unbilled-card" hidden>
+      <p id="unbilled-text"></p>
+      <button class="btn primary" id="unbilled-add" type="button">Add it to this invoice</button>
     </div>
 
     <h2 class="section-title">Charges</h2>
@@ -558,7 +746,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   </section>
 
   <!-- INVOICE -->
-  <section id="view-inv" class="view" role="tabpanel" aria-labelledby="tab-inv" hidden>
+  <section id="view-inv" class="view" role="tabpanel" aria-labelledby="tab-edit" hidden>
+    <div class="seg view-switch" role="group" aria-label="Invoice"><button type="button" data-go="edit">Edit</button><button type="button" data-go="inv">Preview &amp; send</button></div>
     <article class="paper" id="paper" aria-label="Invoice preview">
       <div class="p-band">
         <div class="p-brand">
@@ -649,7 +838,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   </section>
 
   <!-- COMPANY -->
-  <section id="view-company" class="view" role="tabpanel" aria-labelledby="tab-company" hidden>
+  <section id="view-company" class="view" role="tabpanel" aria-label="Company" hidden>
     <p class="store-note">Change anything here whenever you like. It saves on this phone straight away and shows on the invoice you're working on and every new one. Invoices saved earlier keep the details they had.</p>
 
     <div class="card" id="cloud-card">
@@ -664,7 +853,14 @@ a.btn { display: block; text-align: center; text-decoration: none; }
           <button class="btn" id="cloud-signup" type="button">Create account</button>
         </div>
         <p class="hint warn" id="cloud-err" hidden></p>
+        <button class="linkbtn" id="cloud-forgot" type="button">Forgot your password?</button>
         <p class="hint">First time? Put in your email, choose a password and tap Create account. After that, just Sign in.</p>
+      </div>
+      <div class="pay-part" id="cloud-setpw" hidden>
+        <p class="paid-line" id="setpw-title"></p>
+        <label class="f"><span>New password (at least 8 characters)</span><input id="setpw-pass" type="password" autocomplete="new-password"></label>
+        <p class="hint warn" id="setpw-err" hidden></p>
+        <button class="btn primary" id="setpw-save" type="button">Save password</button>
       </div>
       <div class="pay-part" id="cloud-in" hidden>
         <p class="paid-line" id="cloud-line"></p>
@@ -752,6 +948,22 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       </div>
       <label class="f"><span>Tax name</span><input id="tax-label" data-s="taxLabel" placeholder="VAT"></label>
       <p class="hint">Set tax to 0 if you don't charge it and the line disappears.</p>
+      <div class="pay-part" id="vat-opts" hidden>
+        <label class="f"><span>Your VAT quarters end in</span>
+          <select id="vat-stagger" data-s="vatStagger">
+            <option value="1">March, June, September, December</option>
+            <option value="2">April, July, October, January</option>
+            <option value="3">May, August, November, February</option>
+          </select>
+        </label>
+        <label class="f"><span>Count VAT by</span>
+          <select id="vat-basis" data-s="vatBasis">
+            <option value="invoice">Invoice date (standard)</option>
+            <option value="cash">When you're paid (cash accounting)</option>
+          </select>
+        </label>
+        <p class="hint">Used for the VAT figure on the Home screen. It's a guide to check against your return, not a filing.</p>
+      </div>
     </div>
 
     <div class="card" id="services-card">
@@ -803,6 +1015,13 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     </div>
   </section>
 </div>
+<nav class="tabbar" id="tabs" role="tablist" aria-label="Sections">
+  <button id="tab-home" role="tab" aria-selected="true" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a.5.5 0 0 1-.5.5h-5v-6h-6v6H4a.5.5 0 0 1-.5-.5z"/></svg><span>Home</span></button>
+  <button id="tab-edit" role="tab" aria-selected="false" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/></svg><span id="tab-edit-label">Invoice</span></button>
+  <button id="tab-time" role="tab" aria-selected="false" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>Time</span></button>
+  <button id="tab-cust" role="tab" aria-selected="false" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M15.5 4.7a3.4 3.4 0 0 1 0 6.6M18 14.9c1.8.8 3 2.5 3.5 5.1"/></svg><span>Customers</span></button>
+  <button id="tab-saved" role="tab" aria-selected="false" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v11h-17z"/></svg><span>Saved</span></button>
+</nav>
 <div class="toast" id="toast" hidden role="status"><span id="toast-msg"></span><button id="toast-act" hidden>Undo</button></div>
 
 <script>
@@ -847,6 +1066,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     rcptTemplate: "Hi {customer}, thanks for paying invoice {number} ({total}). Your receipt is attached. Thanks, {business}",
     remTemplate: "Hi {customer}, just a friendly reminder that invoice {number} for {total} from {business} hasn't been paid yet. {due}Thanks!",
     lastMethod: "Bank transfer",
+    timeRound: "15", vatStagger: "1", vatBasis: "invoice",
     logo: "", logoW: 0, logoH: 0,
     brandColor: "#16323a", accentColor: "#f4a62a", setupDone: false,
     services: [
@@ -940,6 +1160,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
   // Saved invoices are kept on this phone
   var savedLocal = lsGet(LS_SAVED) || {};
+  // Customers and time entries, one map keyed by id ("cus-…" and "tim-…")
+  var LS_RECORDS = "twb.records";
+  var records = lsGet(LS_RECORDS) || {};
   function savedMap() { return savedLocal; }
   var lastSavedJson = savedMap()[inv.id] ? stable(stripForCompare(savedMap()[inv.id])) : null;
   var saveState = "idle";      // idle | saving | saved | error
@@ -1080,6 +1303,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       var k = el.getAttribute("data-s"), v = settings[k];
       el.value = v == null ? "" : v;
     });
+    $("vat-opts").hidden = !(num(settings.taxRate) > 0);
   }
   document.querySelectorAll("[data-i]").forEach(function (el) {
     el.addEventListener("input", function () {
@@ -1097,6 +1321,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       if (k === "brandColor" || k === "accentColor") { applyBrand(); scheduleIcon(); }
       if (k === "bizName") renderLogo();
       if (k === "taxRate" || k === "taxLabel") renderLines();
+      if (k === "taxRate") $("vat-opts").hidden = !(num(settings.taxRate) > 0);
       if (inv.isExample) { renderTotals(); renderPaper(); } else changed();
     });
   });
@@ -1332,7 +1557,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     setText("job-label", isQuote(inv) ? "What the job is (shown on the quote)" : "What was done (shown on invoice)");
     setText("go-invoice", isQuote(inv) ? "View quote" : "View invoice");
     setText("dup-inv", "Copy to a new " + word.toLowerCase());
-    setText("tab-inv", word);
+    setText("tab-edit-label", word);
+    renderUnbilledCard();
     $("terms-row").hidden = isQuote(inv);
     $("due-date-wrap").hidden = inv.terms !== "date";
     var n = payDaysOf(eff());
@@ -1485,22 +1711,12 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   });
   $("saved-search").addEventListener("input", function () { savedQuery = this.value; renderSaved(); });
 
-  // Past customers: suggest names, and fill in their contact details
-  function renderCustomers(all) {
-    var seen = {}, dl = $("cust-list");
-    dl.innerHTML = "";
-    all.forEach(function (x) {
-      var n = String(x.custName || "").trim();
-      if (!n || seen[n.toLowerCase()]) return;
-      seen[n.toLowerCase()] = 1;
-      var o = document.createElement("option"); o.value = n; dl.append(o);
-    });
-  }
+  // Known customers: suggest names, and fill in their contact details
   $("cust-name").addEventListener("input", function () {
-    var n = this.value.trim().toLowerCase();
+    var n = this.value.trim();
     if (!n || String(inv.custContact || "").trim()) return;
-    var hit = sortedSaved().find(function (x) { return x.id !== inv.id && String(x.custName || "").trim().toLowerCase() === n && x.custContact; });
-    if (hit) { inv.custContact = hit.custContact; $("cust-contact").value = hit.custContact; changed(); }
+    var c = findCustomer(n);
+    if (c && c.contact) { inv.custContact = c.contact; $("cust-contact").value = c.contact; changed(); }
   });
 
   function sortedSaved() {
@@ -1527,7 +1743,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     no = String(no || "").trim();
     return !!no && sortedSaved().some(function (x) { return x.id !== inv.id && isQuote(x) === isQuote(inv) && String(x.no || "").trim() === no; });
   }
-  function renderSaved() {
+  function renderSaved() { renderSavedList(); renderOverview(); }
+  function renderSavedList() {
     $("store-note").textContent = cloudUser
       ? "Saved on this phone and online" + (cloud.lastSync ? " (last synced " + ago(cloud.lastSync) + ")" : "") + "."
       : "Saved on this phone only. Turn on online saving on the Company tab, or make a backup now and then (bottom of this page).";
@@ -1554,7 +1771,6 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     setText("s-year", fmtMoney(ry.amt, settings.currency));
     setText("s-year-n", ty + "/" + String(ty + 1).slice(2) + " (from 6 April) · " + invs.length + " invoices" + (quotes ? ", " + quotes + " quotes" : ""));
     renderBackupNag(all.length);
-    renderCustomers(all);
 
     var q = savedQuery.trim().toLowerCase();
     var list = all.filter(function (x) {
@@ -1824,6 +2040,699 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     toast("New invoice #" + inv.no + " started. Tap Quote at the top to make it a quote.");
   }
 
+  // ---------- Customers and timesheet ----------
+  // Kept like invoices: on this phone first, and in the "records" table online when signed in.
+  function rid(p) { return p + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7); }
+  function isoOf(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function addMonths(iso, n) { var d = new Date(iso.slice(0, 7) + "-01T12:00:00"); d.setMonth(d.getMonth() + n); return isoOf(d).slice(0, 7) + "-01"; }
+  function daysBetween(a, b) { return Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5); }
+  function monthName(iso, long) { var d = new Date(iso + "T12:00:00"); return d.toLocaleDateString(undefined, long ? { month: "long", year: "numeric" } : { month: "short" }); }
+  function money(n) { return fmtMoney(n, settings.currency); }
+  function shortMoney(n) {
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: settings.currency || "GBP", notation: "compact", maximumFractionDigits: 1 }).format(n); }
+    catch (e) { return money(n); }
+  }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many || one + "s"); }
+  function setIfIdle(id, v) { var el = $(id); if (document.activeElement !== el) el.value = v == null ? "" : v; }
+  function normName(n) { return String(n || "").trim().replace(/\s+/g, " ").toLowerCase(); }
+
+  function saveRecords() {
+    try { localStorage.setItem(LS_RECORDS, JSON.stringify(records)); } catch (e) { toast("Couldn't save. This phone's storage is full or blocked."); }
+  }
+  function putRecord(r) { r.updatedAt = Date.now(); records[r.id] = r; saveRecords(); markRecDirty(r.id); }
+  function dropRecord(id) { delete records[id]; saveRecords(); markRecDeleted(id); }
+  function recsOf(kind) { return Object.keys(records).map(function (k) { return records[k]; }).filter(function (r) { return r && r.kind === kind; }); }
+
+  // Time entries: hours at a rate, for a customer, billed once an invoice has a line made from them
+  function timeAmount(e) { return round2(num(e.hrs) * num(e.rate)); }
+  function runningTimer() {
+    return recsOf("time").filter(function (e) { return e.running; }).sort(function (a, b) { return (b.start || 0) - (a.start || 0); })[0] || null;
+  }
+  function doneTime() {
+    return recsOf("time").filter(function (e) { return !e.running; }).sort(function (a, b) {
+      if ((b.date || "") !== (a.date || "")) return (b.date || "") < (a.date || "") ? -1 : 1;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+  }
+  // Worked out from the invoices themselves, so deleting an invoice (or its line) frees the time again
+  function billedMap() {
+    var m = {};
+    function scan(d) {
+      if (!d || isQuote(d) || !Array.isArray(d.items)) return;
+      d.items.forEach(function (it) { if (it.timeId && !m[it.timeId]) m[it.timeId] = { id: d.id, no: d.no }; });
+    }
+    if (!inv.isExample) scan(inv);
+    Object.keys(savedLocal).forEach(function (k) { if (k !== inv.id) scan(savedLocal[k]); });
+    return m;
+  }
+  function unbilledOf(list, bm) { return list.filter(function (e) { return !e.running && !bm[e.id] && num(e.hrs) > 0; }); }
+  function byDate(a, b) { return (a.date || "") < (b.date || "") ? -1 : (a.date || "") > (b.date || "") ? 1 : 0; }
+  function sumHrs(list) { return round2(list.reduce(function (t, e) { return t + num(e.hrs); }, 0)); }
+  function sumAmt(list) { return round2(list.reduce(function (t, e) { return t + timeAmount(e); }, 0)); }
+  function timeItem(e) {
+    return { id: lid(), type: "hourly", desc: (String(e.desc || "").trim() || "Time") + " (" + fmtShort(e.date) + ")",
+      hrs: String(e.hrs), rate: String(e.rate || ""), amt: "", timeId: e.id };
+  }
+
+  // Customers: the ones saved here, plus everyone named on an invoice or a time entry
+  function customerList() {
+    var byKey = {}, out = [];
+    function entry(name, rec) {
+      var c = { key: normName(name), name: String(name).trim().replace(/\s+/g, " "), rec: rec || null,
+        contact: rec ? rec.contact || "" : "", notes: rec ? rec.notes || "" : "", rate: rec ? rec.rate || "" : "",
+        docs: [], time: [], last: rec ? rec.createdOn || "" : "" };
+      out.push(c);
+      return c;
+    }
+    recsOf("customer").sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); }).forEach(function (r) {
+      if (!normName(r.name) || byKey[normName(r.name)]) return;
+      var c = entry(r.name, r);
+      [r.name].concat(r.aka || []).forEach(function (n) { var k = normName(n); if (k && !byKey[k]) byKey[k] = c; });
+    });
+    sortedSaved().forEach(function (d) {
+      var k = normName(d.custName);
+      if (!k) return;
+      var c = byKey[k] || (byKey[k] = entry(d.custName));
+      c.docs.push(d);
+      if (!c.contact && d.custContact) c.contact = d.custContact;
+      if ((d.date || "") > c.last) c.last = d.date || "";
+    });
+    recsOf("time").forEach(function (e) {
+      var k = normName(e.custName);
+      if (!k) return;
+      var c = byKey[k] || (byKey[k] = entry(e.custName));
+      c.time.push(e);
+      if ((e.date || "") > c.last) c.last = e.date || "";
+    });
+    out.sort(function (a, b) { return a.last !== b.last ? (b.last > a.last ? 1 : -1) : a.name.localeCompare(b.name); });
+    return { list: out, byKey: byKey };
+  }
+  function findCustomer(name) { return normName(name) ? customerList().byKey[normName(name)] || null : null; }
+  function ensureCustomerRecord(c) {
+    if (c.rec) return c.rec;
+    var r = { id: rid("cus"), kind: "customer", name: c.name, contact: c.contact || "", notes: "", rate: "", aka: [], createdOn: todayIso() };
+    putRecord(r);
+    c.rec = r;
+    return r;
+  }
+  function defaultRate(name) {
+    var c = findCustomer(name);
+    if (c && num(c.rate)) return c.rate;
+    var sv = rateService();
+    return sv ? sv.rate || "" : "";
+  }
+  function custStats(c, bm) {
+    var invs = c.docs.filter(function (d) { return !isQuote(d); });
+    var o = { invN: invs.length, billed: 0, owed: 0, owedN: 0, paid: 0, overdueN: 0 };
+    invs.forEach(function (d) {
+      o.billed += compute(d).total; o.paid += paidSoFar(d);
+      if (!d.paid && balanceOf(d) > 0) { o.owed += balanceOf(d); o.owedN++; }
+      if (statusOf(d) === "overdue") o.overdueN++;
+    });
+    o.billed = round2(o.billed); o.paid = round2(o.paid); o.owed = round2(o.owed);
+    o.un = unbilledOf(c.time, bm); o.unHrs = sumHrs(o.un); o.unAmt = sumAmt(o.un);
+    return o;
+  }
+  function billGroups(bm) {
+    return customerList().list.map(function (c) { var l = unbilledOf(c.time, bm); return { c: c, list: l, hrs: sumHrs(l), amt: sumAmt(l) }; })
+      .filter(function (g) { return g.list.length; })
+      .sort(function (a, b) { return b.amt - a.amt || b.hrs - a.hrs; });
+  }
+
+  // New invoices and quotes, for a customer or from their unbilled time
+  async function startFor(c, type) {
+    await flush();
+    var no = nextNo(type);
+    inv = blankInvoice(no);
+    if (type === "quote") inv.docType = "quote";
+    if (c) { inv.custName = c.name; inv.custContact = c.contact || ""; }
+    lastSavedJson = null;
+    lsSet(LS_DRAFT, draftBody());
+    renderAll(); show("edit");
+    toast("New " + type + " #" + inv.no + (c ? " for " + c.name : "") + " started");
+  }
+  async function billTime(c) {
+    var list = unbilledOf(c.time, billedMap()).sort(byDate);
+    if (!list.length) { toast("No time to bill for " + c.name + "."); return; }
+    await flush();
+    inv = blankInvoice(nextNo("invoice"));
+    inv.custName = c.name; inv.custContact = c.contact || "";
+    var descs = {};
+    list.forEach(function (e) { var d = String(e.desc || "").trim(); if (d) descs[d.toLowerCase()] = d; });
+    var dk = Object.keys(descs), d0 = list[0].date, d1 = list[list.length - 1].date;
+    inv.job = dk.length === 1 ? descs[dk[0]] : d0 === d1 ? "Work on " + fmtDate(d0) : "Work from " + fmtShort(d0) + " to " + fmtShort(d1);
+    inv.items = list.map(timeItem);
+    lastSavedJson = null;
+    lsSet(LS_DRAFT, draftBody());
+    renderAll(); show("edit");
+    changed();
+    toast("Invoice #" + inv.no + " made from " + plural(list.length, "time entry", "time entries") + ". Check it, then send.", null, null, 4000);
+  }
+  function renderUnbilledCard() {
+    var c = !inv.isExample && !isQuote(inv) ? findCustomer(inv.custName) : null;
+    var list = c ? unbilledOf(c.time, billedMap()) : [];
+    $("unbilled-card").hidden = !list.length;
+    if (list.length) setText("unbilled-text", c.name + " has " + fmtHrs(sumHrs(list)) + " of time not billed yet (" +
+      plural(list.length, "entry", "entries") + (sumAmt(list) ? ", " + money(sumAmt(list)) : "") + ").");
+  }
+  $("unbilled-add").addEventListener("click", function () {
+    var c = findCustomer(inv.custName);
+    if (!c) return;
+    var list = unbilledOf(c.time, billedMap()).sort(byDate);
+    list.forEach(function (e) { inv.items.push(timeItem(e)); });
+    renderLines(); changed();
+    toast("Added " + fmtHrs(sumHrs(list)) + " to this invoice");
+  });
+
+  // Rows used on Home, the timesheet and a customer's page
+  function dashRow(title, sub, amt, warn, tag) {
+    var row = document.createElement(tag || "div");
+    row.className = "dash-row";
+    row.innerHTML = '<div class="dash-top"><div><div class="s-title"></div><div class="s-sub"></div></div><div class="s-amt"></div></div><div class="dash-btns"></div>';
+    row.querySelector(".s-title").textContent = title;
+    row.querySelector(".s-sub").textContent = sub || "";
+    var a = row.querySelector(".s-amt");
+    a.textContent = amt || "";
+    if (warn) a.classList.add("warn");
+    return row;
+  }
+  function rowBtn(row, label, fn, go) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "mini" + (go ? " go" : ""); b.textContent = label;
+    b.addEventListener("click", fn);
+    row.querySelector(".dash-btns").append(b);
+  }
+  function addChip(el, cls, text) { var c = document.createElement("span"); c.className = "chip " + cls; c.textContent = text; el.append(c); return c; }
+  function moreLink(box, label, fn) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "linkbtn"; b.textContent = label; b.style.marginTop = "6px";
+    b.addEventListener("click", fn);
+    box.append(b);
+  }
+  function emptyLine(box, text) { var p = document.createElement("p"); p.className = "dash-empty"; p.textContent = text; box.append(p); }
+  function renderBillRows(box, groups, limit) {
+    box.innerHTML = "";
+    groups.slice(0, limit || groups.length).forEach(function (g) {
+      var first = g.list.slice().sort(byDate)[0].date;
+      var row = dashRow(g.c.name, fmtHrs(g.hrs) + " · " + plural(g.list.length, "entry", "entries") + " since " + fmtShort(first), g.amt ? money(g.amt) : "");
+      rowBtn(row, "Bill these hours", function () { billTime(g.c); }, true);
+      rowBtn(row, "See customer", function () { openCustomer(g.c.key); });
+      box.append(row);
+    });
+  }
+  function showSaved(filter) {
+    savedFilter = filter;
+    document.querySelectorAll("[data-filter]").forEach(function (o) { o.setAttribute("aria-pressed", String(o.getAttribute("data-filter") === filter)); });
+    show("saved");
+    renderSavedList();
+  }
+
+  // ---------- Home ----------
+  function receivedSum(invs, from, to) { return round2(invs.reduce(function (t, x) { return t + receivedIn(x, from, to); }, 0)); }
+  // The VAT quarter today falls in, for the business's stagger (which months its quarters end in)
+  function vatQuarter(t) {
+    var st = parseInt(settings.vatStagger, 10) || 1, cm = parseInt(t.slice(5, 7), 10), y = parseInt(t.slice(0, 4), 10);
+    for (var k = 0; k < 3; k++) {
+      var m = ((cm - 1 + k) % 12) + 1;
+      if (((m - st) % 3 + 3) % 3 === 2) {
+        var endFirst = (y + (cm - 1 + k >= 12 ? 1 : 0)) + "-" + String(m).padStart(2, "0") + "-01";
+        return { from: addMonths(endFirst, -2), to: addMonths(endFirst, 1) };
+      }
+    }
+  }
+  var barPick = 5;
+  function renderHome() {
+    var all = sortedSaved(), invs = all.filter(function (x) { return !isQuote(x); }), bm = billedMap(), t = todayIso();
+    var cur = !inv.isExample && worthSaving();
+    $("h-current").hidden = !cur;
+    if (cur) {
+      var cst = statusOf(inv), chip = $("h-current-chip");
+      chip.className = "chip " + cst; chip.textContent = STATUS_WORDS[cst];
+      setText("h-current-line", (isQuote(inv) ? "Quote #" : "Invoice #") + (inv.no || "—") + " · " +
+        (String(inv.custName || "").trim() || "No customer yet") + " · " + fmtMoney(compute().total));
+    }
+    function owed(arr) { return round2(arr.reduce(function (s2, x) { return s2 + balanceOf(x); }, 0)); }
+    var unpaid = invs.filter(function (x) { return !x.paid && balanceOf(x) > 0; });
+    var overdue = invs.filter(function (x) { return statusOf(x) === "overdue"; }).sort(function (a, b) { return dueIsoOf(a) < dueIsoOf(b) ? -1 : 1; });
+    setText("h-owed", money(owed(unpaid))); setText("h-owed-n", unpaid.length ? plural(unpaid.length, "invoice") : "Nothing owed");
+    setText("h-overdue", money(owed(overdue))); setText("h-overdue-n", overdue.length ? plural(overdue.length, "invoice") : "Nothing late");
+    $("h-overdue").classList.toggle("warn", overdue.length > 0);
+    var m0 = t.slice(0, 7) + "-01";
+    setText("h-month", money(receivedSum(invs, m0, addMonths(m0, 1))));
+    setText("h-month-n", money(receivedSum(invs, addMonths(m0, -1), m0)) + " last month");
+    var unAll = unbilledOf(recsOf("time"), bm);
+    setText("h-unbilled", money(sumAmt(unAll))); setText("h-unbilled-n", unAll.length ? fmtHrs(sumHrs(unAll)) : "All billed");
+
+    var chase = $("h-chase-list");
+    chase.innerHTML = "";
+    overdue.slice(0, 5).forEach(function (x) {
+      var late = daysBetween(dueIsoOf(x), t);
+      var row = dashRow("#" + (x.no || "—") + " · " + (x.custName || "No customer"),
+        plural(late, "day") + " late · was due " + fmtShort(dueIsoOf(x)), fmtMoney(balanceOf(x), x.snap && x.snap.currency), true);
+      rowBtn(row, "Send reminder", function () { sendPdfFor(x, "reminder"); }, true);
+      rowBtn(row, "Mark paid", function () { togglePaid(x); });
+      rowBtn(row, "Open", function () { openInvoice(x, false); });
+      chase.append(row);
+    });
+    if (overdue.length > 5) moreLink(chase, "See all " + overdue.length + " overdue", function () { showSaved("overdue"); });
+    $("h-chase").hidden = !overdue.length;
+
+    var groups = billGroups(bm);
+    renderBillRows($("h-bill-list"), groups, 5);
+    if (groups.length > 5) moreLink($("h-bill-list"), "See them all on the timesheet", function () { show("time"); });
+    $("h-bill").hidden = !groups.length;
+
+    var waiting = all.filter(function (x) { return isQuote(x) && quoteStatusOf(x) === "quote"; });
+    var qb = $("h-quotes-list");
+    qb.innerHTML = "";
+    waiting.slice(0, 5).forEach(function (x) {
+      var row = dashRow("Quote #" + (x.no || "—") + " · " + (x.custName || "No customer"),
+        "Made " + fmtShort(x.date) + (validIso(x) ? " · valid until " + fmtShort(validIso(x)) : ""), fmtMoney(x.total || 0, x.snap && x.snap.currency));
+      rowBtn(row, "They said yes", function () { convertQuote(x); }, true);
+      rowBtn(row, "Open", function () { openInvoice(x, false); });
+      qb.append(row);
+    });
+    if (waiting.length > 5) moreLink(qb, "See all " + waiting.length + " quotes", function () { showSaved("quotes"); });
+    $("h-quotes").hidden = !waiting.length;
+
+    var nothing = !overdue.length && !groups.length && !waiting.length;
+    $("h-clear").hidden = !nothing;
+    if (nothing) {
+      var fresh = !all.length && !recsOf("time").length;
+      setText("h-clear-k", fresh ? "Welcome" : "All caught up");
+      setText("h-clear-text", fresh
+        ? "Make your first invoice or quote, or start the timer when you begin a job. Money owed, time to bill and quotes waiting will all show up here."
+        : "Nothing is late, no time is waiting to be billed and no quotes are waiting for an answer." +
+          (unpaid.length ? " " + money(owed(unpaid)) + " is still to come in, not due yet." : ""));
+    }
+
+    // Money paid in over the last six months
+    var anyPaid = invs.some(function (x) { return paidSoFar(x) > 0; });
+    $("h-chart-card").hidden = !anyPaid;
+    if (anyPaid) {
+      var months = [];
+      for (var i = 5; i >= 0; i--) {
+        var from = addMonths(m0, -i), to = addMonths(from, 1);
+        months.push({ from: from, amt: receivedSum(invs, from, to), n: invs.filter(function (x) { return receivedIn(x, from, to) > 0; }).length });
+      }
+      var max = Math.max.apply(null, months.map(function (mo) { return mo.amt; })) || 1;
+      var bars = $("h-bars");
+      bars.innerHTML = "";
+      months.forEach(function (mo, idx) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "bar-col"; b.setAttribute("aria-pressed", String(idx === barPick));
+        b.setAttribute("aria-label", monthName(mo.from, true) + ": " + money(mo.amt));
+        b.title = monthName(mo.from, true) + ": " + money(mo.amt);
+        b.innerHTML = '<span class="bar-val"></span><span class="bar-track"><span class="bar"></span></span><span class="bar-k"></span>';
+        b.querySelector(".bar-val").textContent = idx === barPick ? shortMoney(mo.amt) : "";
+        b.querySelector(".bar").style.height = (mo.amt > 0 ? Math.max(3, mo.amt / max * 100) : 0) + "%";
+        b.querySelector(".bar-k").textContent = monthName(mo.from, false);
+        b.addEventListener("click", function () { barPick = idx; renderHome(); });
+        bars.append(b);
+      });
+      var pk = months[barPick];
+      setText("h-bar-detail", monthName(pk.from, true) + ": " + money(pk.amt) + " paid in" + (pk.n ? " on " + plural(pk.n, "invoice") : ""));
+    }
+
+    // VAT on this quarter's invoices, for VAT-registered businesses
+    var rate = num(settings.taxRate);
+    $("h-vat").hidden = !(rate > 0);
+    if (rate > 0) {
+      var q = vatQuarter(t), cash = settings.vatBasis === "cash", vat = 0, net = 0, n = 0, label = (settings.taxLabel || "VAT").trim();
+      invs.forEach(function (x) {
+        var c = compute(x);
+        if (cash) {
+          var r = receivedIn(x, q.from, q.to);
+          if (r > 0 && c.total > 0) { vat += c.tax * r / c.total; net += c.sub * r / c.total; n++; }
+        } else if (x.date >= q.from && x.date < q.to) { vat += c.tax; net += c.sub; n++; }
+      });
+      setText("h-vat-k", label + " this quarter");
+      setText("h-vat-range", fmtShort(q.from) + " – " + fmtShort(isoAddDays(q.to, -1)));
+      setText("h-vat-net", money(round2(net)));
+      setText("h-vat-label", label + " charged");
+      setText("h-vat-amt", money(round2(vat)));
+      setText("h-vat-note", (cash ? "Counted when you're paid (cash accounting)" : "Counted by invoice date") + ", from " + plural(n, "invoice") +
+        ". The return and payment are due by " + fmtDate(isoAddDays(addMonths(q.to, 1), 6)) + ". Change how it's counted on the Company tab, under Money.");
+    }
+  }
+  $("h-new-inv").addEventListener("click", function () { startFor(null, "invoice"); });
+  $("h-new-quote").addEventListener("click", function () { startFor(null, "quote"); });
+  $("h-log-time").addEventListener("click", function () { show("time"); });
+  $("h-current-go").addEventListener("click", function () { show("edit"); });
+  $("h-st-owed").addEventListener("click", function () { showSaved("unpaid"); });
+  $("h-st-overdue").addEventListener("click", function () { showSaved("overdue"); });
+  $("h-st-month").addEventListener("click", function () { showSaved("paid"); });
+  $("h-st-unbilled").addEventListener("click", function () { show("time"); });
+  $("h-timer-open").addEventListener("click", function () { show("time"); });
+  $("h-timer-stop").addEventListener("click", function () { stopTimer(); });
+
+  // ---------- Timer ----------
+  var tickTimer = null, tmSaveTimer = null;
+  function fmtClock(ms) {
+    var sec = Math.max(0, Math.floor(ms / 1000));
+    return Math.floor(sec / 3600) + ":" + String(Math.floor(sec / 60) % 60).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+  }
+  function tick() {
+    var r = runningTimer();
+    if (!r) { renderTimer(); return; }
+    var txt = fmtClock(Date.now() - r.start);
+    $("tm-clock").textContent = txt; $("h-timer-clock").textContent = txt;
+  }
+  function renderTimer() {
+    var r = runningTimer();
+    $("tm-clock").textContent = r ? fmtClock(Date.now() - r.start) : "0:00:00";
+    $("tm-chip").hidden = !r;
+    $("tm-start").hidden = !!r;
+    $("tm-running").hidden = !r;
+    if (r) { setIfIdle("tm-cust", r.custName); setIfIdle("tm-desc", r.desc); }
+    $("h-timer").hidden = !r;
+    if (r) {
+      setText("h-timer-text", (r.custName || "No customer") + (r.desc ? " · " + r.desc : "") + " · started " +
+        new Date(r.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));
+      $("h-timer-clock").textContent = fmtClock(Date.now() - r.start);
+    }
+    if (r && !tickTimer) tickTimer = setInterval(tick, 1000);
+    if (!r && tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+  }
+  function timerFields() {
+    var r = runningTimer();
+    if (!r) return;
+    r.custName = $("tm-cust").value.trim(); r.desc = $("tm-desc").value.trim();
+    clearTimeout(tmSaveTimer);
+    tmSaveTimer = setTimeout(function () { r.rate = defaultRate(r.custName); putRecord(r); }, 800);
+  }
+  $("tm-cust").addEventListener("input", timerFields);
+  $("tm-desc").addEventListener("input", timerFields);
+  $("tm-start").addEventListener("click", function () {
+    if (runningTimer()) return;
+    var name = $("tm-cust").value.trim();
+    putRecord({ id: rid("tim"), kind: "time", running: true, start: Date.now(), date: todayIso(), custName: name, desc: $("tm-desc").value.trim(), rate: defaultRate(name) });
+    renderOverview();
+    toast("Timer started");
+  });
+  function stopTimer() {
+    var r = runningTimer();
+    if (!r) return;
+    clearTimeout(tmSaveTimer);
+    if (!$("view-time").hidden) { r.custName = $("tm-cust").value.trim(); r.desc = $("tm-desc").value.trim(); }
+    var ms = Date.now() - r.start, before = clone(r);
+    $("tm-cust").value = ""; $("tm-desc").value = "";
+    if (ms < 30000) {
+      dropRecord(r.id); renderOverview();
+      toast("Stopped. That was under a minute, so nothing was saved.");
+      return;
+    }
+    // Round up to the chosen step (a tiny allowance so exactly 15:00 stays 15 minutes)
+    var step = parseInt(settings.timeRound, 10) || 1, mins = ms / 60000;
+    mins = step > 1 ? Math.ceil(mins / step - 1e-6) * step : Math.max(1, Math.round(mins));
+    r.running = false; r.end = Date.now(); r.date = isoOf(new Date(r.start)); r.hrs = String(round2(mins / 60));
+    r.rate = r.rate || defaultRate(r.custName);
+    putRecord(r);
+    renderOverview();
+    toast("Saved " + fmtHrs(num(r.hrs)) + (r.custName ? " for " + r.custName : ""), "Undo", function () { putRecord(before); renderOverview(); });
+  }
+  $("tm-stop").addEventListener("click", stopTimer);
+  $("tm-cancel").addEventListener("click", function () {
+    var r = runningTimer();
+    if (!r) return;
+    var copy = clone(r);
+    dropRecord(r.id);
+    $("tm-cust").value = ""; $("tm-desc").value = "";
+    renderOverview();
+    toast("Timer thrown away", "Undo", function () { putRecord(copy); renderOverview(); });
+  });
+
+  // ---------- Timesheet ----------
+  var timeFilter = "unbilled", editTimeId = null, timeDraft = null, timeShown = 40;
+  document.querySelectorAll("[data-tfilter]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      timeFilter = b.getAttribute("data-tfilter"); timeShown = 40;
+      document.querySelectorAll("[data-tfilter]").forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+      renderTime();
+    });
+  });
+  function renderTime() {
+    var bm = billedMap(), all = doneTime(), t = todayIso();
+    var wk0 = isoAddDays(t, -((new Date(t + "T12:00:00").getDay() + 6) % 7)), wk1 = isoAddDays(wk0, 7);
+    var week = all.filter(function (e) { return e.date >= wk0 && e.date < wk1; });
+    setText("ts-week", fmtHrs(sumHrs(week))); setText("ts-week-n", money(sumAmt(week)) + " of work since Monday");
+    var un = unbilledOf(all, bm);
+    setText("ts-un", money(sumAmt(un))); setText("ts-un-n", un.length ? fmtHrs(sumHrs(un)) + " · " + plural(un.length, "entry", "entries") : "All billed");
+    var groups = billGroups(bm);
+    renderBillRows($("ts-bill-list"), groups);
+    $("ts-bill").hidden = !groups.length;
+    if (!$("at-date").value) $("at-date").value = t;
+    if (!$("at-rate").dataset.touched) setIfIdle("at-rate", defaultRate($("at-cust").value));
+
+    var list = all.filter(function (e) { return timeFilter === "all" || (timeFilter === "billed") === !!bm[e.id]; });
+    var box = $("time-list");
+    box.innerHTML = "";
+    if (!list.length) {
+      var em = document.createElement("div");
+      em.className = "empty-lines";
+      em.textContent = !all.length ? "No time logged yet. Start the timer, or add time by hand above."
+        : timeFilter === "unbilled" ? "Everything's billed." : "Nothing billed yet.";
+      box.append(em);
+      return;
+    }
+    list.slice(0, timeShown).forEach(function (e) { box.append(editTimeId === e.id ? timeEditor(e, bm[e.id]) : timeCard(e, bm[e.id])); });
+    if (list.length > timeShown) moreLink(box, "Show more", function () { timeShown += 40; renderTime(); });
+  }
+  function timeCard(e, b) {
+    var card = document.createElement("div");
+    card.className = "saved";
+    card.innerHTML = '<div class="s-top"><div><div class="s-title"></div><div class="s-sub"></div></div><div class="s-amt"></div></div>' +
+      '<div class="s-status"><span class="chip"></span><span class="s-when"></span></div>' +
+      '<div class="s-actions"><button type="button" data-a="edit">Change</button><button type="button" data-a="inv">Open invoice</button><button type="button" class="del" data-a="del">Delete</button></div>';
+    card.querySelector(".s-title").textContent = fmtHrs(num(e.hrs)) + " · " + (String(e.custName || "").trim() || "No customer");
+    card.querySelector(".s-sub").textContent = [fmtDate(e.date), e.desc].filter(Boolean).join(" · ");
+    card.querySelector(".s-amt").textContent = num(e.rate) ? money(timeAmount(e)) : "";
+    var chip = card.querySelector(".chip");
+    chip.className = "chip " + (b ? "billed" : "unbilled");
+    chip.textContent = b ? "On invoice #" + (b.no || "—") : "Not billed";
+    card.querySelector(".s-when").textContent = num(e.rate) ? "at " + money(num(e.rate)) + "/hr" : "No rate set";
+    var ib = card.querySelector('[data-a="inv"]');
+    ib.hidden = !b;
+    ib.addEventListener("click", function () { if (b.id === inv.id) show("edit"); else if (savedLocal[b.id]) openInvoice(savedLocal[b.id], false); });
+    card.querySelector('[data-a="edit"]').addEventListener("click", function () {
+      editTimeId = e.id;
+      timeDraft = { date: e.date || "", hrs: e.hrs || "", custName: e.custName || "", desc: e.desc || "", rate: e.rate || "" };
+      renderTime();
+    });
+    card.querySelector('[data-a="del"]').addEventListener("click", function () {
+      var copy = clone(e);
+      dropRecord(e.id); renderOverview();
+      toast("Time entry deleted", "Undo", function () { putRecord(copy); renderOverview(); });
+    });
+    return card;
+  }
+  function timeEditor(e, b) {
+    var card = document.createElement("div");
+    card.className = "saved time-edit";
+    card.innerHTML = '<p class="eyebrow">Change time entry</p>' +
+      '<div class="row"><label class="f"><span>Date</span><input type="date" data-k="date"></label><label class="f"><span>Hours</span><input class="num" inputmode="decimal" data-k="hrs"></label></div>' +
+      '<label class="f"><span>Customer</span><input data-k="custName" list="cust-list" autocomplete="off"></label>' +
+      '<label class="f"><span>What was done</span><input data-k="desc" autocomplete="off"></label>' +
+      '<label class="f"><span>Rate per hour</span><span class="money"><span class="cur"></span><input class="num" inputmode="decimal" placeholder="0.00" data-k="rate"></span></label>' +
+      '<p class="hint" data-billed hidden></p>' +
+      '<div class="row"><button type="button" class="btn" data-a="cancel">Cancel</button><button type="button" class="btn primary" data-a="save">Save</button></div>';
+    card.querySelector(".cur").textContent = curSymbol();
+    card.querySelectorAll("[data-k]").forEach(function (el) {
+      var k = el.getAttribute("data-k");
+      el.value = timeDraft[k] || "";
+      el.addEventListener("input", function () { timeDraft[k] = el.value; });
+    });
+    if (b) { var h = card.querySelector("[data-billed]"); h.hidden = false; h.textContent = "This is already on invoice #" + (b.no || "—") + ". Changing it here doesn't change the invoice."; }
+    card.querySelector('[data-a="cancel"]').addEventListener("click", function () { editTimeId = null; timeDraft = null; renderTime(); });
+    card.querySelector('[data-a="save"]').addEventListener("click", function () {
+      if (!(num(timeDraft.hrs) > 0)) { toast("Put in the hours first."); return; }
+      e.date = timeDraft.date || todayIso(); e.hrs = String(round2(num(timeDraft.hrs)));
+      e.custName = String(timeDraft.custName || "").trim(); e.desc = String(timeDraft.desc || "").trim(); e.rate = String(timeDraft.rate || "").trim();
+      putRecord(e);
+      editTimeId = null; timeDraft = null;
+      renderOverview();
+      toast("Time entry saved");
+    });
+    return card;
+  }
+  $("at-cust").addEventListener("input", function () { if (!$("at-rate").dataset.touched) $("at-rate").value = defaultRate(this.value); });
+  $("at-rate").addEventListener("input", function () { this.dataset.touched = "1"; });
+  $("at-add").addEventListener("click", function () {
+    var hrs = num($("at-hrs").value), err = $("at-err");
+    if (!(hrs > 0)) { err.textContent = "Put in how many hours, for example 2.5."; err.hidden = false; $("at-hrs").focus(); return; }
+    err.hidden = true;
+    var e = { id: rid("tim"), kind: "time", date: $("at-date").value || todayIso(), hrs: String(round2(hrs)),
+      custName: $("at-cust").value.trim(), desc: $("at-desc").value.trim(), rate: $("at-rate").value.trim() };
+    putRecord(e);
+    $("at-hrs").value = ""; $("at-desc").value = "";
+    renderOverview();
+    toast("Added " + fmtHrs(hrs) + (e.custName ? " for " + e.custName : ""), "Undo", function () { dropRecord(e.id); renderOverview(); });
+  });
+  $("time-csv").addEventListener("click", function () {
+    var list = doneTime(), bm = billedMap();
+    if (!list.length) { toast("No time logged yet."); return; }
+    var rows = [["Date", "Customer", "What was done", "Hours", "Rate per hour", "Amount", "Invoice"]];
+    list.forEach(function (e) {
+      rows.push([e.date, e.custName, e.desc, round2(num(e.hrs)), num(e.rate) ? num(e.rate).toFixed(2) : "", timeAmount(e).toFixed(2), bm[e.id] ? bm[e.id].no : ""]);
+    });
+    var csv = "﻿" + rows.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n");
+    shareOrDownload(new Blob([csv], { type: "text/csv" }), (settings.bizName || APP_NAME) + " timesheet " + todayIso() + ".csv", "text/csv");
+  });
+
+  // ---------- Customers ----------
+  var custQuery = "", openCustKey = "";
+  function renderCustDatalist() {
+    var dl = $("cust-list");
+    dl.innerHTML = "";
+    customerList().list.forEach(function (c) { var o = document.createElement("option"); o.value = c.name; dl.append(o); });
+  }
+  $("cust-search").addEventListener("input", function () { custQuery = this.value; renderCustomersView(); });
+  function renderCustomersView() {
+    var cl = customerList(), bm = billedMap(), q = normName(custQuery), box = $("cust-box");
+    box.innerHTML = "";
+    var list = cl.list.filter(function (c) { return !q || (c.name + " " + c.contact).toLowerCase().indexOf(q) >= 0; });
+    if (!list.length) {
+      var em = document.createElement("div");
+      em.className = "empty-lines";
+      em.textContent = cl.list.length ? "No customers match that search." : "No customers yet. Make an invoice, log some time or tap Add a customer, and they'll show up here.";
+      box.append(em);
+      return;
+    }
+    list.forEach(function (c) {
+      var st = custStats(c, bm);
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "saved cust-row";
+      b.innerHTML = '<div class="s-top"><div><div class="s-title"></div><div class="s-sub"></div></div><div class="s-amt"></div></div><div class="s-status"></div>';
+      b.querySelector(".s-title").textContent = c.name;
+      var sub = String(c.contact || "").split("\n")[0].trim();
+      b.querySelector(".s-sub").textContent = sub;
+      b.querySelector(".s-sub").hidden = !sub;
+      var amt = b.querySelector(".s-amt");
+      amt.textContent = st.owed > 0 ? money(st.owed) : "";
+      if (st.overdueN) amt.classList.add("warn");
+      var sts = b.querySelector(".s-status");
+      if (st.overdueN) addChip(sts, "overdue", st.overdueN + " overdue");
+      else if (st.owed > 0) addChip(sts, "unpaid", "Owes you");
+      if (st.un.length) addChip(sts, "unbilled", fmtHrs(st.unHrs) + " not billed");
+      var w = document.createElement("span");
+      w.textContent = [st.invN ? plural(st.invN, "invoice") + ", " + money(st.billed) : "", c.last ? "last " + fmtShort(c.last) : ""].filter(Boolean).join(" · ");
+      sts.append(w);
+      b.addEventListener("click", function () { openCustomer(c.key); });
+      box.append(b);
+    });
+  }
+  function openCustomer(key) { openCustKey = key; show("customer"); }
+  function openCust() { return customerList().byKey[openCustKey] || null; }
+  function renderCustomerDetail() {
+    var c = openCust();
+    if (!c) { show("customers"); return; }
+    var bm = billedMap(), st = custStats(c, bm);
+    setText("cd-title", c.name);
+    setIfIdle("cd-name", c.name); setIfIdle("cd-contact", c.contact); setIfIdle("cd-rate", c.rate); setIfIdle("cd-notes", c.notes);
+    setText("cd-owed", money(st.owed));
+    setText("cd-owed-n", st.overdueN ? st.overdueN + " overdue" : st.owedN ? plural(st.owedN, "invoice") : "Nothing owed");
+    $("cd-owed").classList.toggle("warn", st.overdueN > 0);
+    setText("cd-billed", money(st.billed)); setText("cd-billed-n", plural(st.invN, "invoice"));
+    setText("cd-paid", money(st.paid)); setText("cd-paid-n", st.billed ? Math.round(st.paid / st.billed * 100) + "% of what's billed" : "");
+    setText("cd-un", money(st.unAmt)); setText("cd-un-n", st.un.length ? fmtHrs(st.unHrs) : "All billed");
+    $("cd-bill-box").hidden = !st.un.length;
+    if (st.un.length) setText("cd-bill-text", fmtHrs(st.unHrs) + " of time hasn't been billed yet" + (st.unAmt ? " (" + money(st.unAmt) + ")" : "") + ".");
+
+    var box = $("cd-docs");
+    box.innerHTML = "";
+    if (!c.docs.length) emptyLine(box, "No invoices or quotes yet.");
+    c.docs.forEach(function (d) {
+      var row = dashRow((isQuote(d) ? "Quote #" : "Invoice #") + (d.no || "—"),
+        [fmtDate(d.date), String(d.job || "").replace(/\n+/g, " ")].filter(Boolean).join(" · "), fmtMoney(d.total || 0, d.snap && d.snap.currency), false, "button");
+      row.type = "button"; row.classList.add("link");
+      var stt = statusOf(d);
+      addChip(row.querySelector(".dash-btns"), stt, STATUS_WORDS[stt]);
+      row.addEventListener("click", function () { if (d.id === inv.id) show("edit"); else openInvoice(d, false); });
+      box.append(row);
+    });
+
+    var tb = $("cd-time"), times = c.time.filter(function (e) { return !e.running; }).sort(byDate).reverse();
+    tb.innerHTML = "";
+    if (!times.length) emptyLine(tb, "No time logged for " + c.name + " yet.");
+    times.slice(0, 10).forEach(function (e) {
+      var row = dashRow(fmtHrs(num(e.hrs)) + " · " + fmtDate(e.date), e.desc || "", num(e.rate) ? money(timeAmount(e)) : "");
+      var b = bm[e.id];
+      addChip(row.querySelector(".dash-btns"), b ? "billed" : "unbilled", b ? "On invoice #" + (b.no || "—") : "Not billed");
+      tb.append(row);
+    });
+    if (times.length > 10) moreLink(tb, "See all " + times.length + " on the timesheet", function () { show("time"); });
+
+    var canDel = !!c.rec && !c.docs.length && !c.time.length;
+    $("cd-del").hidden = !canDel;
+    $("cd-del-note").hidden = canDel;
+  }
+  function custField(k, el) {
+    el.addEventListener("input", function () {
+      var c = openCust();
+      if (!c) return;
+      var r = ensureCustomerRecord(c);
+      r[k] = el.value;
+      putRecord(r);
+    });
+  }
+  custField("contact", $("cd-contact")); custField("rate", $("cd-rate")); custField("notes", $("cd-notes"));
+  $("cd-name").addEventListener("change", function () {
+    var c = openCust();
+    if (!c) return;
+    var name = this.value.trim().replace(/\s+/g, " "), k = normName(name);
+    if (!name) { this.value = c.name; return; }
+    var other = customerList().byKey[k];
+    if (other && other !== c && other.key !== c.key) { this.value = c.name; toast("There's already a customer called " + other.name + "."); return; }
+    var r = ensureCustomerRecord(c), renamed = k !== c.key;
+    if (renamed) r.aka = (r.aka || []).concat([c.name]);
+    r.name = name;
+    putRecord(r);
+    openCustKey = k;
+    renderCustomerDetail();
+    toast(renamed ? "Renamed. Their earlier invoices still show here." : "Saved");
+  });
+  $("cd-back").addEventListener("click", function () { show("customers"); });
+  $("cd-new-inv").addEventListener("click", function () { var c = openCust(); if (c) startFor(c, "invoice"); });
+  $("cd-new-quote").addEventListener("click", function () { var c = openCust(); if (c) startFor(c, "quote"); });
+  $("cd-bill").addEventListener("click", function () { var c = openCust(); if (c) billTime(c); });
+  $("cd-log").addEventListener("click", function () {
+    var c = openCust();
+    if (!c) return;
+    show("time");
+    if (!runningTimer()) $("tm-cust").value = c.name;
+    $("at-cust").value = c.name;
+    if (!$("at-rate").dataset.touched) $("at-rate").value = defaultRate(c.name);
+  });
+  $("cd-del").addEventListener("click", function () {
+    var c = openCust();
+    if (!c || !c.rec) return;
+    var copy = clone(c.rec);
+    dropRecord(c.rec.id);
+    show("customers");
+    toast(c.name + " deleted", "Undo", function () { putRecord(copy); openCustomer(normName(copy.name)); });
+  });
+  $("cust-add").addEventListener("click", function () { $("cust-new").hidden = false; $("cust-add").hidden = true; $("cn-err").hidden = true; $("cn-name").focus(); });
+  $("cn-cancel").addEventListener("click", function () { $("cust-new").hidden = true; $("cust-add").hidden = false; $("cn-name").value = ""; $("cn-contact").value = ""; });
+  $("cn-save").addEventListener("click", function () {
+    var name = $("cn-name").value.trim().replace(/\s+/g, " "), err = $("cn-err");
+    if (!name) { err.textContent = "Put in their name first."; err.hidden = false; $("cn-name").focus(); return; }
+    if (findCustomer(name)) { err.textContent = "There's already a customer called " + findCustomer(name).name + "."; err.hidden = false; return; }
+    putRecord({ id: rid("cus"), kind: "customer", name: name, contact: $("cn-contact").value.trim(), notes: "", rate: "", aka: [], createdOn: todayIso() });
+    $("cust-new").hidden = true; $("cust-add").hidden = false; $("cn-name").value = ""; $("cn-contact").value = "";
+    openCustomer(normName(name));
+    toast(name + " added");
+  });
+
+  // Re-draw whichever of these screens is showing
+  function renderOverview() {
+    renderTimer();
+    renderCustDatalist();
+    if (!$("view-home").hidden) renderHome();
+    if (!$("view-time").hidden) renderTime();
+    if (!$("view-customers").hidden) renderCustomersView();
+    if (!$("view-customer").hidden) renderCustomerDetail();
+  }
+
   // ---------- Toast ----------
   var toastTimer;
   function toast(msg, actLabel, act, ms) {
@@ -1838,25 +2747,35 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   }
 
   // ---------- Tabs ----------
+  var VIEWS = ["setup", "home", "edit", "inv", "time", "customers", "customer", "saved", "company"];
+  var TAB_OF = { home: "tab-home", edit: "tab-edit", inv: "tab-edit", time: "tab-time", customers: "tab-cust", customer: "tab-cust", saved: "tab-saved" };
+  var currentView = "home", viewBeforeCompany = "home";
   function show(which) {
-    ["setup", "edit", "inv", "saved", "company"].forEach(function (v) {
-      $("view-" + v).hidden = v !== which;
-      var t = $("tab-" + v);
-      if (t) t.setAttribute("aria-selected", String(v === which));
-    });
+    if (which === "company" && currentView !== "company") viewBeforeCompany = currentView === "setup" ? "home" : currentView;
+    VIEWS.forEach(function (v) { $("view-" + v).hidden = v !== which; });
+    ["tab-home", "tab-edit", "tab-time", "tab-cust", "tab-saved"].forEach(function (id) { $(id).setAttribute("aria-selected", String(TAB_OF[which] === id)); });
+    var invView = which === "edit" || which === "inv";
     $("tabs").hidden = which === "setup";
-    $("hdr-total").hidden = which === "setup";
-    document.querySelector(".brand-sub").hidden = which === "setup";
+    $("hdr-total").hidden = !invView;
+    document.querySelector(".brand-sub").hidden = !invView;
+    $("hdr-company").hidden = which === "setup";
+    $("hdr-company").setAttribute("aria-pressed", String(which === "company"));
+    document.querySelectorAll("[data-go]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-go") === which)); });
     if (which !== "edit") flush();
     if (which === "inv") schedulePrep();
+    currentView = which;
+    renderOverview();
     window.scrollTo(0, 0);
   }
-  $("tab-edit").addEventListener("click", function () { show("edit"); });
-  $("tab-inv").addEventListener("click", function () { show("inv"); });
+  $("tab-home").addEventListener("click", function () { show("home"); });
+  $("tab-edit").addEventListener("click", function () { show(currentView === "inv" ? "inv" : "edit"); });
+  $("tab-time").addEventListener("click", function () { show("time"); });
+  $("tab-cust").addEventListener("click", function () { show("customers"); });
   $("tab-saved").addEventListener("click", function () { show("saved"); });
-  $("tab-company").addEventListener("click", function () { show("company"); });
+  document.querySelectorAll("[data-go]").forEach(function (b) { b.addEventListener("click", function () { show(b.getAttribute("data-go")); }); });
+  $("hdr-company").addEventListener("click", function () { show(currentView === "company" ? viewBeforeCompany : "company"); });
   $("go-company").addEventListener("click", function () { show("company"); });
-  $("company-done").addEventListener("click", function () { show("edit"); toast("Company info saved"); });
+  $("company-done").addEventListener("click", function () { show(viewBeforeCompany); toast("Company info saved"); });
   $("go-invoice").addEventListener("click", function () { show("inv"); });
   $("back-edit").addEventListener("click", function () { show("edit"); });
 
@@ -2661,7 +3580,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     ensurePhotos(ids).then(function () {
       var photos = {};
       ids.forEach(function (id) { if (photoCache[id]) photos[id] = photoCache[id]; });
-      var data = { app: "blast-invoice", version: 3, exportedAt: new Date().toISOString(), settings: settings, invoices: savedLocal, photos: photos };
+      var data = { app: "blast-invoice", version: 4, exportedAt: new Date().toISOString(), settings: settings, invoices: savedLocal, records: records, photos: photos };
       var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
       var name = APP_NAME + " backup " + todayIso() + ".json";
       function done(r) { if (r === "cancelled") return; settings.lastBackup = todayIso(); settingsChanged(); renderSaved(); }
@@ -2699,6 +3618,13 @@ a.btn { display: block; text-align: center; text-decoration: none; }
           if (!savedLocal[k] || (b.updatedAt || 0) > (savedLocal[k].updatedAt || 0)) { savedLocal[k] = b; added++; markDirty(k); }
         });
         if (data.settings) { settings = upgradeSettings(data.settings, mergeSettings(data.settings)); settingsChanged(); fetchPresetLogo(); }
+        var rAdded = 0, recs = data.records && typeof data.records === "object" ? data.records : {};
+        Object.keys(recs).forEach(function (k) {
+          var rr = recs[k];
+          if (!rr || !rr.id || !rr.kind) return;
+          if (!records[k] || (rr.updatedAt || 0) > (records[k].updatedAt || 0)) { records[k] = rr; markRecDirty(k); rAdded++; }
+        });
+        if (rAdded) saveRecords();
         lsSet(LS_SAVED, savedLocal);
         var photos = data.photos && typeof data.photos === "object" ? data.photos : {};
         Promise.all(Object.keys(photos).map(function (id) {
@@ -2717,10 +3643,18 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhZnZyemZiY3lwaG1ubmV2cndpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5OTY4OTEsImV4cCI6MjEwODU3Mjg5MX0.iz85bOZ8tFsrIcq1E2rnIfWaDiXp3Pucj1g-gtMHzc4";
   var LS_CLOUD = "blast-invoice.cloud";
   var sb = null, cloudUser = null, cloudState = "", cloudErr = "", syncing = false, syncAgain = false, syncTimer = null;
+  // Links from our emails come back here; read them before the sign-in library tidies the address bar
+  var linkType = (function () {
+    var h = new URLSearchParams(String(location.hash || "").replace(/^#/, "")), q = new URLSearchParams(location.search);
+    if (h.get("error_code") || q.get("error_code")) return "error";
+    return h.get("type") || "";
+  })();
+  var needPassword = linkType === "invite" || linkType === "recovery" ? linkType : "";
   var cloud = lsGet(LS_CLOUD) || {};
   function fixCloud() {
     cloud.dirty = cloud.dirty && typeof cloud.dirty === "object" ? cloud.dirty : {};
     cloud.uploaded = cloud.uploaded && typeof cloud.uploaded === "object" ? cloud.uploaded : {};
+    cloud.rdirty = cloud.rdirty && typeof cloud.rdirty === "object" ? cloud.rdirty : {};
   }
   fixCloud();
   function cloudSave() { lsSet(LS_CLOUD, cloud); }
@@ -2728,6 +3662,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   function markDirty(id) { cloud.dirty[id] = 1; cloudSave(); scheduleSync(); }
   function markDeleted(id) { cloud.dirty[id] = Date.now(); cloudSave(); scheduleSync(); }
   function markSettingsDirty() { cloud.settingsDirty = true; cloudSave(); scheduleSync(); }
+  function markRecDirty(id) { cloud.rdirty[id] = 1; cloudSave(); scheduleSync(); }
+  function markRecDeleted(id) { cloud.rdirty[id] = Date.now(); cloudSave(); scheduleSync(); }
   function ago(ms) {
     var m = Math.round((Date.now() - ms) / 60000);
     if (m < 1) return "just now";
@@ -2794,6 +3730,25 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         settings = upgradeSettings(sres.data.settings, mergeSettings(sres.data.settings)); lsSet(LS_SETTINGS, settings); cloud.settingsDirty = false; changedLocal = true;
         fetchPresetLogo();
       } else if (!sres.data) cloud.settingsDirty = true;
+      // Customers and time entries changed on another device
+      var rq = sb.from("records").select("id, kind, doc, deleted, updated_at").order("updated_at", { ascending: true });
+      if (cloud.lastPullR) rq = rq.gt("updated_at", cloud.lastPullR);
+      var rres = await rq;
+      if (rres.error) throw rres.error;
+      var maxR = cloud.lastPullR || "", recChanged = false;
+      (rres.data || []).forEach(function (row) {
+        if (row.updated_at > maxR) maxR = row.updated_at;
+        var local = records[row.id], rdoc = row.doc || {};
+        var rTime = rdoc.updatedAt || 0, lTime = local ? local.updatedAt || 0 : 0;
+        if (row.deleted) {
+          if (local && rTime >= lTime) { delete records[row.id]; delete cloud.rdirty[row.id]; recChanged = true; }
+          return;
+        }
+        if (!rdoc.kind) return;
+        if (!local || rTime > lTime) { records[row.id] = rdoc; delete cloud.rdirty[row.id]; recChanged = true; }
+      });
+      if (maxR) cloud.lastPullR = maxR;
+      if (recChanged) { saveRecords(); changedLocal = true; }
       // 2. Send up photos for invoices about to be sent
       var dirtyIds = Object.keys(cloud.dirty);
       var needUp = photoIdsOf(dirtyIds).filter(function (id) { return !cloud.uploaded[id]; });
@@ -2814,7 +3769,20 @@ a.btn { display: block; text-align: center; text-decoration: none; }
         if (pres.error) throw pres.error;
         dirtyIds.forEach(function (id) { delete cloud.dirty[id]; });
       }
-      // 4. Settings
+      // 4. Customers and time entries (a record changed while sending stays queued)
+      var rIds = Object.keys(cloud.rdirty), sent = {};
+      if (rIds.length) {
+        var rrows = rIds.map(function (id) {
+          var r = records[id];
+          sent[id] = r ? r.updatedAt : "gone";
+          return r ? { user_id: uid, id: id, kind: r.kind, doc: r, deleted: false }
+            : { user_id: uid, id: id, kind: id.indexOf("cus-") === 0 ? "customer" : "time", doc: { id: id, updatedAt: cloud.rdirty[id] > 1 ? cloud.rdirty[id] : Date.now() }, deleted: true };
+        });
+        var rp = await sb.from("records").upsert(rrows, { onConflict: "user_id,id" });
+        if (rp.error) throw rp.error;
+        rIds.forEach(function (id) { if ((records[id] ? records[id].updatedAt : "gone") === sent[id]) delete cloud.rdirty[id]; });
+      }
+      // 5. Settings
       if (cloud.settingsDirty) {
         var set = await sb.from("app_settings").upsert({ user_id: uid, settings: settings }, { onConflict: "user_id" });
         if (set.error) throw set.error;
@@ -2828,7 +3796,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     }
     cloudSave();
     syncing = false;
-    if (changedLocal && settings.setupDone && !$("view-setup").hidden) show("edit");
+    if (changedLocal && settings.setupDone && !$("view-setup").hidden) show("home");
     if (changedLocal) {
       Object.keys(photoCache).forEach(function (k) { if (photoCache[k] === null) delete photoCache[k]; });
       gridSig = paperSig = "";
@@ -2842,8 +3810,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     cloudUser = user;
     if (cloud.userId !== user.id) {
       // First time this account is used on this phone: send everything already here
-      cloud = { userId: user.id, dirty: {}, uploaded: {}, settingsDirty: true, lastPull: null, lastSync: 0 };
+      cloud = { userId: user.id, dirty: {}, rdirty: {}, uploaded: {}, settingsDirty: true, lastPull: null, lastPullR: null, lastSync: 0 };
       Object.keys(savedLocal).forEach(function (id) { cloud.dirty[id] = 1; });
+      Object.keys(records).forEach(function (id) { cloud.rdirty[id] = 1; });
       cloudSave();
     }
     renderCloud(); renderSaved();
@@ -2856,6 +3825,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     $("cloud-unavail").hidden = !!sb;
     $("cloud-out").hidden = !sb || !!cloudUser;
     $("cloud-in").hidden = !cloudUser;
+    $("cloud-setpw").hidden = !(cloudUser && needPassword);
+    if (cloudUser && needPassword) setText("setpw-title", needPassword === "invite"
+      ? "Welcome! Choose a password so you can sign in on any phone, tablet or computer."
+      : "Choose a new password for " + cloudUser.email + ".");
     if (!cloudUser) { chip.className = "chip declined"; chip.textContent = "Off"; return; }
     chip.className = "chip " + (cloudState === "error" ? "overdue" : "paid");
     chip.textContent = cloudState === "syncing" ? "Syncing…" : cloudState === "error" ? "Not synced" : "On";
@@ -2873,9 +3846,14 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     sb.auth.getSession().then(function (r) {
       var u = r.data && r.data.session ? r.data.session.user : null;
       if (u) signedIn(u);
+      if (linkType) { try { history.replaceState(null, "", location.pathname); } catch (e) {} }
+      if (linkType === "error") toast("That link has run out or was already used. Ask for a new one.", null, null, 6000);
+      else if (u && needPassword) askForPassword();
+      else if (u && (linkType === "signup" || linkType === "email_change")) toast("Email confirmed. You're signed in.");
     });
     sb.auth.onAuthStateChange(function (ev, session) {
       if (ev === "SIGNED_OUT") { cloudUser = null; renderCloud(); renderSaved(); }
+      if (ev === "PASSWORD_RECOVERY" && session) { needPassword = "recovery"; if (cloudUser) askForPassword(); }
     });
   }
   $("cloud-signin").addEventListener("click", async function () {
@@ -2917,6 +3895,42 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     signedIn(s2.data.user);
     toast("Account made. Saving your invoices online…");
   });
+  function askForPassword() {
+    renderCloud(); show("company");
+    setTimeout(function () { $("cloud-card").scrollIntoView({ block: "start" }); $("setpw-pass").focus(); }, 0);
+  }
+  $("setpw-save").addEventListener("click", async function () {
+    var pw = $("setpw-pass").value, err = $("setpw-err"), btn = this;
+    if (pw.length < 8) { err.textContent = "Make the password at least 8 characters."; err.hidden = false; return; }
+    err.hidden = true; btn.disabled = true;
+    var r = await sb.auth.updateUser({ password: pw });
+    btn.disabled = false;
+    if (r.error) {
+      err.textContent = r.error.code === "same_password" ? "That's the password you have now. Choose a different one."
+        : r.error.code === "weak_password" ? "That password is too easy to guess. Try a longer one."
+        : "Couldn't save the password. Check your internet and try again.";
+      err.hidden = false;
+      return;
+    }
+    $("setpw-pass").value = ""; needPassword = ""; renderCloud();
+    toast("Password saved");
+    show(settings.setupDone ? "home" : "setup");
+  });
+  $("cloud-forgot").addEventListener("click", async function () {
+    var em = $("cloud-email").value.trim();
+    if (!em) { cloudError("Put in your email above first, then tap Forgot your password."); $("cloud-email").focus(); return; }
+    cloudError(""); cloudBusy(true);
+    var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
+    cloudBusy(false);
+    if (r.error) {
+      cloudError(r.error.status === 429 ? "Too many emails sent just now. Try again in a little while."
+        : r.error.code === "email_address_not_authorized" ? "Password emails aren't switched on yet. Ask whoever set up the app."
+        : r.error.code === "email_address_invalid" ? "That doesn't look like an email address that can get mail."
+        : "Couldn't send the email. Check your internet and try again.");
+      return;
+    }
+    toast("Check your email for a link to choose a new password. Open it on this phone.", null, null, 6000);
+  });
   $("cloud-sync").addEventListener("click", function () { syncNow(true); });
   $("cloud-signout").addEventListener("click", async function () {
     await flush();
@@ -2947,7 +3961,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); else scheduleSync(500); });
   initCloud();
   fetchPresetLogo();
-  if (!settings.setupDone) show("setup");
+  show(settings.setupDone ? "home" : "setup");
 })();
 </script>
 </body>
