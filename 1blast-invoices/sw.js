@@ -26,15 +26,18 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // The app itself: network first, cached copy when offline
+  // The app itself: network first, cached copy when offline or when the host
+  // answers with an error page (e.g. Netlify's "Site not available")
   if (req.mode === "navigate" || url.origin === location.origin) {
+    const key = req.mode === "navigate" ? "./" : req;
+    const cached = () => caches.match(key, { ignoreSearch: true });
     e.respondWith(
       fetch(req)
         .then((res) => {
-          if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req.mode === "navigate" ? "./" : req, copy)); }
-          return res;
+          if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(key, copy)); return res; }
+          return cached().then((hit) => hit || res);
         })
-        .catch(() => caches.match(req.mode === "navigate" ? "./" : req, { ignoreSearch: true }))
+        .catch(cached)
     );
     return;
   }
