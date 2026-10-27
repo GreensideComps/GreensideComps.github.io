@@ -1,11 +1,12 @@
 // Offline copy of Time Well Billed. The app page is fetched fresh when online
 // (so updates show straight away) and served from this cache when there's no signal.
-const CACHE = "twb-v9";
+const CACHE = "twb-v10";
 const CORE = [
   "./",
-  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
+  "./app.js",
+  "./vendor/jspdf.umd.min.js",
+  "./vendor/html2canvas.min.js",
+  "./vendor/supabase.js"
 ];
 
 self.addEventListener("install", (e) => {
