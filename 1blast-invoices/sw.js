@@ -1,6 +1,6 @@
 // Offline copy of Time Well Billed. The app page is fetched fresh when online
 // (so updates show straight away) and served from this cache when there's no signal.
-const CACHE = "twb-v7";
+const CACHE = "twb-v8";
 const CORE = [
   "./",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",

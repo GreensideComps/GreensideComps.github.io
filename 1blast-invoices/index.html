@@ -250,6 +250,7 @@ details.card > div { display: flex; flex-direction: column; gap: 12px; }
 }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .btn.danger { color: var(--danger); }
+.btn.danger-solid { background: var(--danger); border-color: var(--danger); color: var(--surface); font-weight: 700; }
 .btn:disabled { opacity: .6; cursor: default; }
 .confirm {
   display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 10px;
@@ -538,7 +539,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     <div class="card" id="h-current" hidden>
       <div class="card-head"><p class="eyebrow">Open now</p><span class="chip" id="h-current-chip"></span></div>
       <p class="paid-line" id="h-current-line"></p>
-      <button class="btn" id="h-current-go" type="button">Carry on with it</button>
+      <div class="row"><button class="btn" id="h-current-del" type="button" data-del-open>Delete</button><button class="btn primary" id="h-current-go" type="button">Carry on with it</button></div>
+      <div class="confirm" data-del-confirm hidden><p data-del-text></p><div class="row"><button class="btn" type="button" data-del-no>Keep it</button><button class="btn danger-solid" type="button" data-del-yes>Delete</button></div></div>
     </div>
     <div class="saved-sum">
       <button class="stat" type="button" id="h-st-owed"><div class="k">Owed to you</div><div class="v" id="h-owed"></div><div class="n" id="h-owed-n"></div></button>
@@ -742,6 +744,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
           <button class="btn primary" id="new-yes">Start new</button>
         </div>
       </div>
+      <button class="btn danger" id="del-inv" type="button" data-del-open>Delete this invoice</button>
+      <div class="confirm" data-del-confirm hidden><p data-del-text></p><div class="row"><button class="btn" type="button" data-del-no>Keep it</button><button class="btn danger-solid" type="button" data-del-yes>Delete</button></div></div>
     </div>
   </section>
 
@@ -1562,6 +1566,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     setText("dup-inv", "Copy to a new " + word.toLowerCase());
     setText("tab-edit-label", word);
     renderUnbilledCard();
+    renderDel();
     $("terms-row").hidden = isQuote(inv);
     $("due-date-wrap").hidden = inv.terms !== "date";
     var n = payDaysOf(eff());
@@ -2004,7 +2009,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       delete savedLocal[s.id]; lsSet(LS_SAVED, savedLocal); markDeleted(s.id);
       if (wasOpen) { inv = blankInvoice(nextNo("invoice")); lastSavedJson = null; lsSet(LS_DRAFT, draftBody()); renderAll(); }
       else renderSaved();
-      toast("Invoice #" + (s.no || "") + " deleted", "Undo", function () {
+      toast((isQuote(s) ? "Quote #" : "Invoice #") + (s.no || "") + " deleted", "Undo", function () {
         copy.updatedAt = Date.now(); savedLocal[copy.id] = copy; lsSet(LS_SAVED, savedLocal); markDirty(copy.id);
         if (wasOpen && !worthSaving()) openInvoice(copy, false); else renderSaved();
       });
@@ -2032,6 +2037,39 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     toast((asCopy ? "Copied to new " : "Opened ") + (isQuote(inv) ? "quote" : "invoice") + " #" + inv.no);
     if (asCopy) changed();
   }
+
+  // Delete the invoice or quote that's open, after asking (with Undo afterwards as well)
+  function delWords() {
+    var word = isQuote(inv) ? "quote" : "invoice";
+    var t = "Delete " + word + (inv.no ? " #" + inv.no : "") + (String(inv.custName || "").trim() ? " for " + inv.custName.trim() : "") +
+      " (" + fmtMoney(compute().total) + ") for good? It's removed from Saved" + (cloudUser ? " and from your online copy" : "") + ".";
+    if (inv.items.some(function (it) { return it.timeId; })) t += " Its time goes back to Not billed on the timesheet.";
+    if (!isQuote(inv) && paidSoFar(inv) > 0) t += " It has payments recorded against it, so your paid totals will drop.";
+    return t;
+  }
+  function canDelete() { return !inv.isExample && (worthSaving() || !!savedLocal[inv.id]); }
+  function renderDel() {
+    var word = isQuote(inv) ? "quote" : "invoice";
+    $("del-inv").textContent = "Delete this " + word;
+    $("del-inv").hidden = !canDelete();
+    document.querySelectorAll("[data-del-confirm]").forEach(function (c) { if (!c.hidden) c.querySelector("[data-del-text]").textContent = delWords(); });
+  }
+  document.querySelectorAll("[data-del-open]").forEach(function (b) {
+    var box = b.closest(".actions, .card"), conf = box.querySelector("[data-del-confirm]");
+    b.addEventListener("click", function () {
+      conf.querySelector("[data-del-text]").textContent = delWords();
+      conf.hidden = false; b.hidden = true;
+      conf.querySelector("[data-del-no]").focus();
+    });
+    conf.querySelector("[data-del-no]").addEventListener("click", function () { conf.hidden = true; b.hidden = false; });
+    conf.querySelector("[data-del-yes]").addEventListener("click", function () {
+      conf.hidden = true; b.hidden = false;
+      clearTimeout(saveTimer);
+      var doc = savedLocal[inv.id] ? Object.assign(invBody(), { updatedAt: Date.now() }) : invBody();
+      deleteInvoice(doc);
+      show("home");
+    });
+  });
 
   async function startNew() {
     await flush();
@@ -2766,6 +2804,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     document.querySelectorAll("[data-go]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-go") === which)); });
     if (which !== "edit") flush();
     if (which === "inv") schedulePrep();
+    document.querySelectorAll("[data-del-confirm]").forEach(function (c) { c.hidden = true; });
+    document.querySelectorAll("[data-del-open]").forEach(function (b) { b.hidden = b.id === "del-inv" ? !canDelete() : false; });
     currentView = which;
     renderOverview();
     window.scrollTo(0, 0);
