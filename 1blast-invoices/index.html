@@ -828,6 +828,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <details>
         <summary class="linkbtn">See what the email says</summary>
         <div class="msg-preview" id="msg-preview" style="margin-top:8px"></div>
+        <img id="sig-preview" alt="Your logo card, added under the sign-off" hidden style="display:block;width:100%;max-width:420px;border-radius:6px;margin-top:8px">
         <p class="hint" style="margin-top:6px">It's written for you from the invoice. Your name for the sign-off is on the Company tab.</p>
       </details>
     </div>
@@ -924,6 +925,8 @@ a.btn { display: block; text-align: center; text-decoration: none; }
       <label class="f"><span>Message sent with each invoice</span><textarea id="msg-template" data-s="msgTemplate" rows="3"></textarea></label>
       <label class="f"><span>Your name, to sign off emails</span><input id="sign-name" data-s="signName" placeholder="e.g. Dave Smith"></label>
       <p class="hint">Emails end with "Kind regards", your name, then your business name, phone and email.</p>
+      <label class="chk"><input type="checkbox" id="email-card"><span>Put my logo and details under the sign-off in emails</span></label>
+      <p class="hint" id="email-card-hint"></p>
       <label class="f"><span>Message sent with a quote</span><textarea id="quote-template" data-s="quoteTemplate" rows="3"></textarea></label>
       <label class="f"><span>Quotes are valid for (days)</span><input id="quote-days" data-s="quoteDays" class="num" inputmode="numeric" placeholder="30"></label>
       <label class="f"><span>Message with a receipt (once it's paid)</span><textarea id="rcpt-template" data-s="rcptTemplate" rows="3"></textarea></label>
@@ -1698,7 +1701,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     if (again) { again = false; flush(); }
   }
 
-  function settingsChanged() { settings.updatedAt = Date.now(); lsSet(LS_SETTINGS, settings); markSettingsDirty(); }
+  function settingsChanged() { settings.updatedAt = Date.now(); lsSet(LS_SETTINGS, settings); markSettingsDirty(); scheduleSig(); }
 
   // ---------- Saved list ----------
   var savedFilter = "all", savedQuery = "";
@@ -2940,7 +2943,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     var parts = [(name ? "Dear " + name + "," : "Hello,"), open, summary.join("\n")];
     if (pay.length) parts.push("To pay by bank transfer:\n" + pay.join("\n"));
     parts = parts.concat(after);
-    var sign = ["Kind regards,", "", settings.signName, biz, s.bizTagline, s.bizPhone, s.bizEmail, s.bizWebsite]
+    var sign = (sigWanted() ? ["Kind regards,", "", settings.signName, biz] : ["Kind regards,", "", settings.signName, biz, s.bizTagline, s.bizPhone, s.bizEmail, s.bizWebsite])
       .filter(function (x, i) { return i === 1 || x; });
     parts.push(sign.join("\n"));
     return parts.filter(Boolean).join("\n\n");
@@ -2996,7 +2999,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     $("hdr-biz").hidden = has;
     $("logo-reset").hidden = !has;
     $("su-logo-btn").textContent = has ? "Change logo" : "Add your logo";
-    scheduleIcon();
+    scheduleIcon(); scheduleSig();
   }
   $("logo-change").addEventListener("click", function () { $("logo-file").click(); });
   $("su-logo-btn").addEventListener("click", function () { $("logo-file").click(); });
@@ -3435,11 +3438,12 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     return d.output("blob");
   }
   // Hand a file to the phone's share sheet (send or save to Files); fall back to a plain download
-  function shareOrDownload(blob, name, type, text, onBlocked, title) {
+  function shareOrDownload(blob, name, type, text, onBlocked, title, extra) {
     var file = null;
     try { file = new File([blob], name, { type: type }); } catch (e) {}
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-      var data = { files: [file], title: title || name };
+      var files = extra && extra.length && navigator.canShare({ files: extra.concat([file]) }) ? extra.concat([file]) : [file];
+      var data = { files: files, title: title || name };
       if (text) data.text = text;
       return navigator.share(data).catch(function (e) {
         if (e && e.name === "AbortError") return "cancelled";
@@ -3478,10 +3482,78 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     sharePdf(out);
   }
   function sharePdf(o) {
+    var extra = sigFiles();
     shareOrDownload(o.blob, o.name, "application/pdf", o.text, function () {
-      toast("PDF ready", "Send", function () { shareOrDownload(o.blob, o.name, "application/pdf", o.text, null, o.title); }, 15000);
-    }, o.title);
+      toast("PDF ready", "Send", function () { shareOrDownload(o.blob, o.name, "application/pdf", o.text, null, o.title, extra); }, 15000);
+    }, o.title, extra);
   }
+
+  // ---------- Logo card under the email sign-off ----------
+  // Apps can only hand Mail plain text, so the logo goes in as a small picture, which iPhone Mail shows
+  // under the sign-off. It's drawn ahead of time because the share menu has to open straight from the tap.
+  var sigCard = null, sigKey = "", sigTimer = null, sigUrl = "";
+  function sigWanted() { return settings.emailCard !== false && !!settings.logo; }
+  function sigFiles() {
+    if (!sigWanted() || !sigCard) return [];
+    try { return [new File([sigCard], (String(settings.bizName || "").trim() || "Logo").replace(/[\\/:*?"<>|]+/g, "") + ".jpg", { type: "image/jpeg" })]; }
+    catch (e) { return []; }
+  }
+  function scheduleSig() { clearTimeout(sigTimer); sigTimer = setTimeout(makeSig, 500); }
+  function fitText(cx, text, style, size, family, maxW) {
+    for (; size > 14; size -= 2) { cx.font = style + " " + size + "px " + family; if (cx.measureText(text).width <= maxW) break; }
+    return size;
+  }
+  function makeSig() {
+    if (!sigWanted()) { sigCard = null; sigKey = ""; renderSigPreview(); return; }
+    var st = settings, key = [st.logo.length, st.logo.slice(-48), st.bizName, st.bizTagline, st.bizPhone, st.bizEmail, st.bizWebsite, st.brandColor, st.accentColor].join("|");
+    if (sigCard && key === sigKey) return;
+    var im = new Image();
+    im.onload = function () {
+      (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () {
+        var c = brandColours(), W = 1200, H = 300, cv = document.createElement("canvas");
+        cv.width = W; cv.height = H;
+        var cx = cv.getContext("2d");
+        cx.fillStyle = rgbHex(c.band); cx.fillRect(0, 0, W, H);
+        cx.fillStyle = rgbHex(c.acc); cx.fillRect(0, H - 10, W, 10);
+        var bw = 380, bh = 200, sc = Math.min(bw / im.naturalWidth, bh / im.naturalHeight);
+        var w = im.naturalWidth * sc, h = im.naturalHeight * sc;
+        cx.drawImage(im, 50, (H - 10 - h) / 2, w, h);
+        var x = 50 + w + 56, maxW = W - x - 50;
+        cx.fillStyle = rgbHex(c.bandMuted); cx.fillRect(x - 28, 60, 3, H - 130);
+        var lines = [];
+        if (st.bizName) lines.push({ t: String(st.bizName).toUpperCase(), style: "italic 700", size: 52, fam: "'Barlow Condensed', 'Arial Narrow', Arial, sans-serif", col: c.accOnBand, gap: 10 });
+        if (st.bizTagline) lines.push({ t: st.bizTagline, style: "500", size: 28, fam: "Barlow, Arial, sans-serif", col: c.bandMuted, gap: 16 });
+        [st.bizPhone, st.bizEmail, st.bizWebsite].filter(Boolean).forEach(function (t) {
+          lines.push({ t: t, style: "500", size: 30, fam: "Barlow, Arial, sans-serif", col: c.bandInk, gap: 6 });
+        });
+        lines.forEach(function (l) { l.size = fitText(cx, l.t, l.style, l.size, l.fam, maxW); });
+        var total = lines.reduce(function (t, l, i) { return t + l.size + (i < lines.length - 1 ? l.gap : 0); }, 0);
+        var y = (H - 10 - total) / 2;
+        cx.textBaseline = "top";
+        lines.forEach(function (l) {
+          cx.font = l.style + " " + l.size + "px " + l.fam; cx.fillStyle = rgbHex(l.col);
+          cx.fillText(l.t, x, y); y += l.size + l.gap;
+        });
+        sigCard = dataUrlToBlob(cv.toDataURL("image/jpeg", 0.92)); sigKey = key;
+        renderSigPreview();
+      });
+    };
+    im.onerror = function () { sigCard = null; renderSigPreview(); };
+    im.src = st.logo;
+  }
+  function renderSigPreview() {
+    var img = $("sig-preview"), on = sigWanted() && !!sigCard;
+    if (sigUrl) { URL.revokeObjectURL(sigUrl); sigUrl = ""; }
+    if (on) { sigUrl = URL.createObjectURL(sigCard); img.src = sigUrl; }
+    img.hidden = !on;
+    $("email-card").checked = settings.emailCard !== false;
+    setText("email-card-hint", !settings.logo ? "Add your logo at the top of this tab first."
+      : "It's a picture of your logo with your details, on your colours. iPhone Mail shows it under the sign-off. Some other email apps show it as an attachment instead.");
+  }
+  $("email-card").addEventListener("change", function () {
+    settings.emailCard = this.checked;
+    settingsChanged(); makeSig(); renderShare(); renderSigPreview();
+  });
 
   // Picture of the invoice sheet (PNG), good for WhatsApp and texts
   var picToken = 0, pic = null, picBusy = false, picWanted = false, prepTimer = null;
